@@ -1656,15 +1656,19 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
                     };
                     // Proceder a guardar una vez obtenida la ubicación
                     // Cerrar el modal de "Obteniendo ubicación" antes de continuar
-                    const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                    if (currentModal) currentModal.hide();
+                    setTimeout(() => {
+                        const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                        if (currentModal) currentModal.hide();
+                    }, 50);
                     finalizeServiceSave();
                 },
                 (error) => {
                     // Error: mostrar mensaje específico
                     console.error('Error de geolocalización para finalización:', error);
-                    const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                    if (currentModal) currentModal.hide();
+                    setTimeout(() => {
+                        const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                        if (currentModal) currentModal.hide();
+                    }, 50);
                     showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
                 },
                 'finalizacion_servicio'
@@ -2793,16 +2797,20 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
                         finalizationModal.hide();
                     }
                     // Cerrar la alerta de "obteniendo ubicación"
-                    const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                    if (currentModal) currentModal.hide();
+                    setTimeout(() => {
+                        const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                        if (currentModal) currentModal.hide();
+                    }, 50);
                     
                     saveAndNotify();
                 },
                 (error) => {
                     // Error: mostrar mensaje específico
                     console.error('Error de geolocalización para cambio de estado:', error);
-                    const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                    if (currentModal) currentModal.hide();
+                    setTimeout(() => {
+                        const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                        if (currentModal) currentModal.hide();
+                    }, 50);
                     showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
                 },
                 'cambio_estado'
@@ -2857,13 +2865,17 @@ function startService(serviceId) {
         (locationData) => {
             // Éxito: ubicación obtenida
             saveServiceLocation(serviceId, locationData);
-            const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-            if (currentModal) currentModal.hide();
+            setTimeout(() => {
+                const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                if (currentModal) currentModal.hide();
+            }, 50);
         },
         (error) => {
             // Error: mostrar mensaje específico
-            const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-            if (currentModal) currentModal.hide();
+            setTimeout(() => {
+                const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                if (currentModal) currentModal.hide();
+            }, 50);
             console.error('Error de geolocalización:', error);
             showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
         },
@@ -3998,7 +4010,14 @@ function createRemisionFromService(serviceId) {
 
     remisiones.push(remision);
     saveRemisiones();
-    renderRemisionesList();
+    // Forzar recarga desde localStorage para evitar desincronización
+    remisiones = JSON.parse(localStorage.getItem('remisiones')) || remisiones;
+    // Limpiar posibles filtros y renderizar
+    if (typeof clearRemisionesFilters === 'function') {
+        clearRemisionesFilters();
+    } else {
+        renderRemisionesList();
+    }
     // Refrescar lista de servicios para ocultar el botón de remisión del servicio ya utilizado
     if (typeof renderAdminServicesList === 'function') {
         renderAdminServicesList(services, 1);
