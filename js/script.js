@@ -1149,10 +1149,9 @@ function deleteUser(id) {
         renderAdminServicesList(services, 1);
         renderAssignedServicesList(1);
         renderEmployeeAssignedServices(1); // Refresh for other employees
-            // Cerrar cualquier confirmación visible y mostrar confirmación breve
+            // Cerrar confirmación si está abierta (sin mostrar alerta de éxito)
             const confirmModal = bootstrap.Modal.getInstance(document.getElementById('customConfirmModal'));
             if (confirmModal) confirmModal.hide();
-            showAlert('Usuario eliminado exitosamente.');
         }
     });
 }
@@ -1321,7 +1320,7 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
                 `<button class="btn btn-danger btn-sm" onclick="deleteService('${service.id}')">Eliminar</button>` :
                 `<button class="btn btn-danger btn-sm" disabled title="No se puede eliminar servicio finalizado/cancelado">Eliminar</button>`;
             const remisionButton = canGenerateRemision ?
-                `<button class="btn btn-success btn-sm" onclick="createRemisionFromService('${service.id}')">Remisión</button>` :
+                `<button class="btn btn-success btn-sm" data-service-id="${service.id}" onclick="createRemisionFromService('${service.id}')">Remisión</button>` :
                 (service.status === 'Finalizado' && hasRemision ? `<button class="btn btn-outline-secondary btn-sm" disabled title="Ya tiene remisión">Remisión</button>` : '');
 
             // Generar fila de tabla (vista desktop)
@@ -2793,12 +2792,17 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
                     if (finalizationModal) {
                         finalizationModal.hide();
                     }
+                    // Cerrar la alerta de "obteniendo ubicación"
+                    const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                    if (currentModal) currentModal.hide();
                     
                     saveAndNotify();
                 },
                 (error) => {
                     // Error: mostrar mensaje específico
                     console.error('Error de geolocalización para cambio de estado:', error);
+                    const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                    if (currentModal) currentModal.hide();
                     showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
                 },
                 'cambio_estado'
@@ -2853,9 +2857,13 @@ function startService(serviceId) {
         (locationData) => {
             // Éxito: ubicación obtenida
             saveServiceLocation(serviceId, locationData);
+            const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+            if (currentModal) currentModal.hide();
         },
         (error) => {
             // Error: mostrar mensaje específico
+            const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+            if (currentModal) currentModal.hide();
             console.error('Error de geolocalización:', error);
             showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
         },
@@ -3994,6 +4002,15 @@ function createRemisionFromService(serviceId) {
     // Refrescar lista de servicios para ocultar el botón de remisión del servicio ya utilizado
     if (typeof renderAdminServicesList === 'function') {
         renderAdminServicesList(services, 1);
+    }
+
+    // En UI: deshabilitar/remover el botón que disparó la acción si existe
+    const btn = document.querySelector(`button.btn.btn-success.btn-sm[data-service-id="${serviceId}"]`);
+    if (btn) {
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-secondary');
+        btn.setAttribute('disabled', 'disabled');
+        btn.setAttribute('title', 'Ya tiene remisión');
     }
 }
 
