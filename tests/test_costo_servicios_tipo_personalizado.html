@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba - Tipo Personalizado en Costo Servicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>Prueba - Tipo Personalizado en Costo Servicios</h4>
+            </div>
+            <div class="card-body">
+                <h5>🆕 Nuevas Funcionalidades Implementadas:</h5>
+                <div class="alert alert-success">
+                    <strong>✅ Funcionalidades agregadas exitosamente:</strong>
+                </div>
+                
+                <h5>1. ✅ Opción "Otro" en Tipo de Servicio:</h5>
+                <ul>
+                    <li><strong>✅ Dropdown actualizado:</strong> Ahora incluye "Otro" como opción</li>
+                    <li><strong>✅ Campo dinámico:</strong> Se muestra input adicional cuando se selecciona "Otro"</li>
+                    <li><strong>✅ Validación:</strong> Requiere especificar el tipo personalizado</li>
+                    <li><strong>✅ Enfoque automático:</strong> El cursor se posiciona en el campo personalizado</li>
+                </ul>
+                
+                <h5>2. ✅ Edición Mejorada:</h5>
+                <ul>
+                    <li><strong>✅ Datos precargados:</strong> Todos los datos se muestran correctamente</li>
+                    <li><strong>✅ Detección automática:</strong> Identifica si es tipo predefinido o personalizado</li>
+                    <li><strong>✅ Campo personalizado:</strong> Se muestra automáticamente si es necesario</li>
+                    <li><strong>✅ Preservación de datos:</strong> Mantiene el tipo original al editar</li>
+                </ul>
+                
+                <h5>3. ✅ Tipos Predefinidos:</h5>
+                <ul>
+                    <li><strong>✅ Bovedas y cajas fuertes de seguridad</strong></li>
+                    <li><strong>✅ Puertas de seguridad</strong></li>
+                    <li><strong>✅ Pasatulas o tombolas</strong></li>
+                    <li><strong>🆕 Otro (personalizado)</strong></li>
+                </ul>
+                
+                <h5>Pasos para Probar:</h5>
+                <ol>
+                    <li><strong>Prueba 1 - Crear con Tipo Predefinido:</strong>
+                        <ul>
+                            <li>Ve a "Costo Servicios" → "Crear Costo Servicio"</li>
+                            <li>Selecciona un tipo predefinido (ej: "Puertas de seguridad")</li>
+                            <li>Verifica que NO aparezca el campo adicional</li>
+                            <li>Completa descripción y precio</li>
+                            <li>Guarda el servicio</li>
+                        </ul>
+                    </li>
+                    <li><strong>Prueba 2 - Crear con Tipo Personalizado:</strong>
+                        <ul>
+                            <li>Ve a "Costo Servicios" → "Crear Costo Servicio"</li>
+                            <li>Selecciona "Otro" en el dropdown</li>
+                            <li>Verifica que aparezca el campo "Especificar Tipo de Servicio"</li>
+                            <li>Verifica que el cursor se posicione automáticamente</li>
+                            <li>Escribe un tipo personalizado (ej: "Sistemas de alarma")</li>
+                            <li>Completa descripción y precio</li>
+                            <li>Guarda el servicio</li>
+                        </ul>
+                    </li>
+                    <li><strong>Prueba 3 - Editar Tipo Predefinido:</strong>
+                        <ul>
+                            <li>Edita un servicio con tipo predefinido</li>
+                            <li>Verifica que se seleccione correctamente en el dropdown</li>
+                            <li>Verifica que NO aparezca el campo adicional</li>
+                            <li>Modifica otros campos y guarda</li>
+                        </ul>
+                    </li>
+                    <li><strong>Prueba 4 - Editar Tipo Personalizado:</strong>
+                        <ul>
+                            <li>Edita un servicio con tipo personalizado</li>
+                            <li>Verifica que se seleccione "Otro" en el dropdown</li>
+                            <li>Verifica que aparezca el campo adicional con el valor original</li>
+                            <li>Modifica el tipo personalizado y guarda</li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h5>🎯 Comportamiento Esperado:</h5>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Acción</th>
+                            <th>Dropdown</th>
+                            <th>Campo Adicional</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Seleccionar tipo predefinido</td>
+                            <td>Valor seleccionado</td>
+                            <td>Oculto</td>
+                            <td class="text-success">✅ Normal</td>
+                        </tr>
+                        <tr>
+                            <td>Seleccionar "Otro"</td>
+                            <td>"Otro"</td>
+                            <td>Visible y enfocado</td>
+                            <td class="text-success">✅ Personalizado</td>
+                        </tr>
+                        <tr>
+                            <td>Editar tipo predefinido</td>
+                            <td>Valor original</td>
+                            <td>Oculto</td>
+                            <td class="text-success">✅ Correcto</td>
+                        </tr>
+                        <tr>
+                            <td>Editar tipo personalizado</td>
+                            <td>"Otro"</td>
+                            <td>Visible con valor original</td>
+                            <td class="text-success">✅ Correcto</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h5>📝 Ejemplos de Tipos Personalizados:</h5>
+                <div class="alert alert-info">
+                    <strong>Tipos que puedes crear:</strong><br>
+                    • Sistemas de alarma<br>
+                    • Cámaras de seguridad<br>
+                    • Cerraduras inteligentes<br>
+                    • Controles de acceso<br>
+                    • Cualquier tipo que necesites
+                </div>
+                
+                <h5>Logs de Depuración:</h5>
+                <ul>
+                    <li><strong>✅ Creación predefinido:</strong> <code>✅ Nuevo servicio creado: {tipo: "Puertas de seguridad"}</code></li>
+                    <li><strong>✅ Creación personalizado:</strong> <code>✅ Nuevo servicio creado: {tipo: "Sistemas de alarma"}</code></li>
+                    <li><strong>✅ Edición detectada:</strong> <code>✅ Tipo detectado como personalizado</code></li>
+                </ul>
+                
+                <div class="alert alert-success">
+                    <strong>✅ Implementación Completa:</strong> El módulo ahora permite:
+                    <ul>
+                        <li>✅ Tipos predefinidos y personalizados</li>
+                        <li>✅ Campo dinámico para tipos personalizados</li>
+                        <li>✅ Edición correcta de ambos tipos</li>
+                        <li>✅ Validaciones apropiadas</li>
+                    </ul>
+                </div>
+                
+                <a href="index.html" class="btn btn-primary">Ir al Sistema</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

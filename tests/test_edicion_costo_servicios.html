@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba - Edición Costo Servicios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>Prueba - Edición Costo Servicios</h4>
+            </div>
+            <div class="card-body">
+                <h5>🔍 Diagnóstico del Problema:</h5>
+                <div class="alert alert-warning">
+                    <strong>⚠️ Problema reportado:</strong> El modal sale vacío al editar
+                </div>
+                
+                <h5>🔧 Pasos para Diagnosticar:</h5>
+                <ol>
+                    <li><strong>Paso 1 - Verificar datos en localStorage:</strong>
+                        <ul>
+                            <li>Abre las herramientas de desarrollador (F12)</li>
+                            <li>Ve a la pestaña "Console"</li>
+                            <li>Ejecuta: <code>console.log(JSON.parse(localStorage.getItem('costoServicios')))</code></li>
+                            <li>Verifica que haya datos y que tengan la estructura correcta</li>
+                        </ul>
+                    </li>
+                    <li><strong>Paso 2 - Crear un servicio de prueba:</strong>
+                        <ul>
+                            <li>Ve a "Costo Servicios"</li>
+                            <li>Crea un nuevo servicio con datos completos</li>
+                            <li>Guarda el servicio</li>
+                            <li>Verifica que aparezca en la lista</li>
+                        </ul>
+                    </li>
+                    <li><strong>Paso 3 - Probar edición:</strong>
+                        <ul>
+                            <li>Haz clic en "Editar" del servicio creado</li>
+                            <li>Observa los logs en la consola</li>
+                            <li>Verifica que el modal se abra con los datos</li>
+                        </ul>
+                    </li>
+                    <li><strong>Paso 4 - Verificar logs:</strong>
+                        <ul>
+                            <li>Busca estos logs en la consola:</li>
+                            <li><code>🔍 Editando servicio con ID: [ID]</code></li>
+                            <li><code>✅ Servicio encontrado: [objeto]</code></li>
+                            <li><code>📝 Datos cargados en formulario: [objeto]</code></li>
+                            <li><code>✅ Modal abierto correctamente</code></li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h5>🎯 Logs Esperados:</h5>
+                <div class="alert alert-info">
+                    <strong>Logs que deberías ver en la consola:</strong><br>
+                    <code>🔍 Editando servicio con ID: [ID del servicio]</code><br>
+                    <code>📊 Costo servicios disponibles: [Array de servicios]</code><br>
+                    <code>✅ Servicio encontrado: {id: "...", codigo: "...", tipo: "...", descripcion: "...", precio: ...}</code><br>
+                    <code>📝 Datos cargados en formulario: [objeto con datos]</code><br>
+                    <code>🔍 Verificando tipo: [tipo del servicio]</code><br>
+                    <code>✅ Tipo predefinido/personalizado detectado</code><br>
+                    <code>🎯 Configuración final del formulario: [configuración]</code><br>
+                    <code>✅ Modal abierto correctamente</code>
+                </div>
+                
+                <h5>❌ Posibles Errores:</h5>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Error</th>
+                            <th>Causa</th>
+                            <th>Solución</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>❌ No se encontró el servicio con ID: [ID]</code></td>
+                            <td>El ID no existe en costoServicios</td>
+                            <td>Verificar que el servicio existe en localStorage</td>
+                        </tr>
+                        <tr>
+                            <td><code>Cannot read property 'value' of null</code></td>
+                            <td>Elemento del DOM no encontrado</td>
+                            <td>Verificar que los IDs del HTML coincidan</td>
+                        </tr>
+                        <tr>
+                            <td>Modal no se abre</td>
+                            <td>Error en Bootstrap Modal</td>
+                            <td>Verificar que Bootstrap esté cargado</td>
+                        </tr>
+                        <tr>
+                            <td>Datos no se cargan</td>
+                            <td>Problema con costoServicios</td>
+                            <td>Verificar localStorage y estructura de datos</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h5>🔧 Comandos de Depuración:</h5>
+                <div class="alert alert-secondary">
+                    <strong>Comandos para ejecutar en la consola:</strong><br>
+                    <code>// Verificar datos en localStorage</code><br>
+                    <code>console.log(JSON.parse(localStorage.getItem('costoServicios')))</code><br><br>
+                    <code>// Verificar variable costoServicios</code><br>
+                    <code>console.log(costoServicios)</code><br><br>
+                    <code>// Verificar elementos del DOM</code><br>
+                    <code>console.log(document.getElementById('edit-costo-servicio-id'))</code><br>
+                    <code>console.log(document.getElementById('costo-servicio-codigo'))</code><br>
+                    <code>console.log(document.getElementById('costo-servicio-tipo'))</code><br>
+                    <code>console.log(document.getElementById('costo-servicio-descripcion'))</code><br>
+                    <code>console.log(document.getElementById('costo-servicio-precio'))</code><br><br>
+                    <code>// Verificar modal</code><br>
+                    <code>console.log(document.getElementById('createCostoServicioModal'))</code>
+                </div>
+                
+                <h5>📋 Checklist de Verificación:</h5>
+                <ul>
+                    <li>✅ ¿Hay datos en localStorage?</li>
+                    <li>✅ ¿La variable costoServicios tiene datos?</li>
+                    <li>✅ ¿Los elementos del DOM existen?</li>
+                    <li>✅ ¿El modal se abre correctamente?</li>
+                    <li>✅ ¿Los datos se cargan en el formulario?</li>
+                    <li>✅ ¿El tipo se detecta correctamente?</li>
+                    <li>✅ ¿El campo personalizado aparece si es necesario?</li>
+                </ul>
+                
+                <div class="alert alert-success">
+                    <strong>✅ Después de la verificación:</strong>
+                    <ul>
+                        <li>Si encuentras errores, compártelos en la consola</li>
+                        <li>Si todo funciona, el problema puede ser temporal</li>
+                        <li>Los logs te ayudarán a identificar exactamente dónde está el problema</li>
+                    </ul>
+                </div>
+                
+                <a href="index.html" class="btn btn-primary">Ir al Sistema</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

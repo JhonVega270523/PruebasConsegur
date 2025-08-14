@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Compatibilidad Multi-Navegador</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .test-container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .result-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-line;
+        }
+        .success { border-color: #28a745; background-color: #d4edda; }
+        .error { border-color: #dc3545; background-color: #f8d7da; }
+        .info { border-color: #17a2b8; background-color: #d1ecf1; }
+        .warning { border-color: #ffc107; background-color: #fff3cd; }
+        .browser-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .accuracy-meter {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .accuracy-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545, #ffc107, #28a745);
+            transition: width 0.3s ease;
+        }
+        .btn-group-vertical .btn {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="text-center mb-4">🌐 Test de Compatibilidad Multi-Navegador</h1>
+        
+        <div class="browser-info">
+            <h4>📱 Información del Navegador</h4>
+            <div id="browser-details">Cargando...</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="test-section">
+                    <h3>🔧 Diagnóstico del Sistema</h3>
+                    <button class="btn btn-info w-100 mb-2" onclick="runDiagnostic()">Ejecutar Diagnóstico Completo</button>
+                    <div id="diagnostic-result"></div>
+                </div>
+
+                <div class="test-section">
+                    <h3>🔐 Gestión de Permisos</h3>
+                    <div class="btn-group-vertical w-100">
+                        <button class="btn btn-primary" onclick="checkPermissions()">Verificar Permisos</button>
+                        <button class="btn btn-warning" onclick="requestPermissions()">Solicitar Permisos</button>
+                        <button class="btn btn-danger" onclick="forcePermissions()">Forzar Permisos</button>
+                    </div>
+                    <div id="permissions-result" class="mt-3"></div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="test-section">
+                    <h3>🎯 Test de Precisión</h3>
+                    <div class="btn-group-vertical w-100">
+                        <button class="btn btn-success" onclick="testQuickLocation()">Ubicación Rápida</button>
+                        <button class="btn btn-info" onclick="testPreciseLocation()">Alta Precisión</button>
+                        <button class="btn btn-secondary" onclick="testMultipleAttempts()">Múltiples Intentos</button>
+                    </div>
+                    <div id="precision-result" class="mt-3"></div>
+                </div>
+
+                <div class="test-section">
+                    <h3>📊 Comparación de Métodos</h3>
+                    <button class="btn btn-dark w-100" onclick="compareAllMethods()">Comparar Todos los Métodos</button>
+                    <div id="comparison-result" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🛠️ Solución de Problemas</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>Problema: Permisos Denegados</h5>
+                    <button class="btn btn-outline-danger btn-sm" onclick="showPermissionHelp()">Ver Solución</button>
+                </div>
+                <div class="col-md-4">
+                    <h5>Problema: Baja Precisión</h5>
+                    <button class="btn btn-outline-warning btn-sm" onclick="showAccuracyHelp()">Ver Solución</button>
+                </div>
+                <div class="col-md-4">
+                    <h5>Problema: Timeout</h5>
+                    <button class="btn btn-outline-info btn-sm" onclick="showTimeoutHelp()">Ver Solución</button>
+                </div>
+            </div>
+            <div id="help-result" class="mt-3"></div>
+        </div>
+    </div>
+
+    <script src="../js/geolocation-utils.js"></script>
+    <script>
+        let geolocation;
+        let testResults = [];
+
+        // Inicializar al cargar la página
+        window.onload = function() {
+            geolocation = new EnhancedGeolocation();
+            console.log('🌍 Sistema de geolocalización inicializado');
+            
+            // Mostrar información del navegador
+            displayBrowserInfo();
+            
+            // Ejecutar diagnóstico automático
+            setTimeout(runDiagnostic, 1000);
+        };
+
+        function displayBrowserInfo() {
+            const browserInfo = geolocation.getBrowserInfo();
+            const details = document.getElementById('browser-details');
+            
+            details.innerHTML = `
+                <strong>Navegador:</strong> ${browserInfo.name} ${browserInfo.version}<br>
+                <strong>Plataforma:</strong> ${browserInfo.platform}<br>
+                <strong>Idioma:</strong> ${browserInfo.language}<br>
+                <strong>Móvil:</strong> ${browserInfo.isMobile ? 'Sí' : 'No'}<br>
+                <strong>User Agent:</strong> ${browserInfo.userAgent.substring(0, 50)}...
+            `;
+        }
+
+        function showResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result-box ${type}`;
+            resultDiv.innerHTML = message;
+            container.appendChild(resultDiv);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        async function runDiagnostic() {
+            clearResults('diagnostic-result');
+            showResult('diagnostic-result', '🔍 Ejecutando diagnóstico completo...', 'info');
+            
+            try {
+                // 1. Verificar soporte básico
+                const supportResult = {
+                    geolocation: 'geolocation' in navigator,
+                    permissions: 'permissions' in navigator,
+                    secure: location.protocol === 'https:',
+                    userAgent: navigator.userAgent
+                };
+                
+                // 2. Verificar permisos
+                const permissionStatus = await geolocation.checkLocationPermission();
+                
+                // 3. Verificar configuración del navegador
+                const browserInfo = geolocation.getBrowserInfo();
+                const optimizedOptions = geolocation.getOptimizedOptions('quick');
+                
+                let message = '<strong>📊 Resultados del Diagnóstico</strong>\n\n';
+                
+                // Soporte básico
+                message += '<strong>✅ Soporte Básico:</strong>\n';
+                message += `• Geolocalización: ${supportResult.geolocation ? '✅ Soportada' : '❌ No soportada'}\n`;
+                message += `• API de Permisos: ${supportResult.permissions ? '✅ Disponible' : '❌ No disponible'}\n`;
+                message += `• HTTPS: ${supportResult.secure ? '✅ Seguro' : '⚠️ No seguro'}\n\n`;
+                
+                // Estado de permisos
+                message += '<strong>🔐 Estado de Permisos:</strong>\n';
+                message += `• Estado: ${permissionStatus.state || 'Desconocido'}\n`;
+                message += `• Concedido: ${permissionStatus.granted ? '✅ Sí' : '❌ No'}\n\n`;
+                
+                // Configuración optimizada
+                message += '<strong>⚙️ Configuración Optimizada:</strong>\n';
+                message += `• Navegador: ${browserInfo.name}\n`;
+                message += `• Alta Precisión: ${optimizedOptions.enableHighAccuracy ? '✅ Activada' : '❌ Desactivada'}\n`;
+                message += `• Timeout: ${optimizedOptions.timeout}ms\n`;
+                message += `• Cache: ${optimizedOptions.maximumAge}ms\n\n`;
+                
+                // Recomendaciones
+                message += '<strong>💡 Recomendaciones:</strong>\n';
+                if (!supportResult.secure && browserInfo.name === 'Safari') {
+                    message += '• ⚠️ Safari requiere HTTPS para geolocalización\n';
+                }
+                if (!permissionStatus.granted) {
+                    message += '• 🔧 Solicita permisos de ubicación\n';
+                }
+                if (browserInfo.isMobile) {
+                    message += '• 📱 Dispositivo móvil detectado - verifica GPS\n';
+                }
+                
+                showResult('diagnostic-result', message, 'success');
+                
+            } catch (error) {
+                showResult('diagnostic-result', `
+                    <strong>❌ Error en diagnóstico</strong>
+                    Error: ${error.message}
+                `, 'error');
+            }
+        }
+
+        async function checkPermissions() {
+            clearResults('permissions-result');
+            showResult('permissions-result', '🔍 Verificando permisos...', 'info');
+            
+            try {
+                const status = await geolocation.checkLocationPermission();
+                
+                let message = '<strong>🔐 Estado de Permisos</strong>\n\n';
+                message += `• Estado: ${status.state || 'Desconocido'}\n`;
+                message += `• Concedido: ${status.granted ? '✅ Sí' : '❌ No'}\n`;
+                message += `• Denegado: ${status.denied ? '❌ Sí' : '✅ No'}\n`;
+                message += `• Pendiente: ${status.prompt ? '⚠️ Sí' : '✅ No'}\n\n`;
+                
+                if (status.granted) {
+                    message += '✅ Los permisos están concedidos correctamente';
+                } else if (status.denied) {
+                    message += '❌ Los permisos han sido denegados\n';
+                    message += geolocation.getPermissionInstructions();
+                } else {
+                    message += '⚠️ Los permisos no han sido solicitados aún';
+                }
+                
+                showResult('permissions-result', message, status.granted ? 'success' : 'warning');
+                
+            } catch (error) {
+                showResult('permissions-result', `
+                    <strong>❌ Error al verificar permisos</strong>
+                    Error: ${error.message}
+                `, 'error');
+            }
+        }
+
+        async function requestPermissions() {
+            clearResults('permissions-result');
+            showResult('permissions-result', '🔐 Solicitando permisos...', 'info');
+            
+            try {
+                const result = await geolocation.requestLocationPermission();
+                
+                let message = '<strong>✅ Permisos Concedidos</strong>\n\n';
+                message += `• Mensaje: ${result.message}\n`;
+                message += `• Posición obtenida: ${result.position ? '✅ Sí' : '❌ No'}\n`;
+                
+                if (result.position) {
+                    message += `• Latitud: ${result.position.coords.latitude.toFixed(6)}\n`;
+                    message += `• Longitud: ${result.position.coords.longitude.toFixed(6)}\n`;
+                    message += `• Precisión: ±${Math.round(result.position.coords.accuracy)}m\n`;
+                }
+                
+                showResult('permissions-result', message, 'success');
+                
+            } catch (error) {
+                let message = '<strong>❌ Permisos Denegados</strong>\n\n';
+                message += `• Mensaje: ${error.message}\n`;
+                message += `• Detalles: ${error.details}\n`;
+                
+                showResult('permissions-result', message, 'error');
+            }
+        }
+
+        async function forcePermissions() {
+            clearResults('permissions-result');
+            showResult('permissions-result', '🔧 Forzando solicitud de permisos...', 'info');
+            
+            try {
+                const result = await geolocation.forcePermissionRequest();
+                
+                let message = '<strong>✅ Permisos Forzados Exitosamente</strong>\n\n';
+                message += `• Mensaje: ${result.message}\n`;
+                message += `• Intentos: ${result.attempts || 1}\n`;
+                message += `• Posición obtenida: ${result.position ? '✅ Sí' : '❌ No'}\n`;
+                
+                if (result.position) {
+                    message += `• Latitud: ${result.position.coords.latitude.toFixed(6)}\n`;
+                    message += `• Longitud: ${result.position.coords.longitude.toFixed(6)}\n`;
+                    message += `• Precisión: ±${Math.round(result.position.coords.accuracy)}m\n`;
+                }
+                
+                showResult('permissions-result', message, 'success');
+                
+            } catch (error) {
+                let message = '<strong>❌ No se pudieron forzar los permisos</strong>\n\n';
+                message += `• Mensaje: ${error.message}\n`;
+                message += `• Detalles: ${error.details}\n`;
+                message += `• Intentos: ${error.attempts || 1}\n`;
+                
+                showResult('permissions-result', message, 'error');
+            }
+        }
+
+        function testQuickLocation() {
+            clearResults('precision-result');
+            const startTime = Date.now();
+            
+            showResult('precision-result', '🚀 Probando ubicación rápida...', 'info');
+            
+            geolocation.getQuickLocation(
+                (locationData) => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    
+                    const accuracyPercentage = Math.max(0, Math.min(100, (100 - locationData.accuracy) / 100 * 100));
+                    
+                    let message = '<strong>✅ Ubicación Rápida Exitosa</strong>\n\n';
+                    message += `• Tiempo: ${duration}ms\n`;
+                    message += `• Coordenadas: ${locationData.latitude.toFixed(8)}, ${locationData.longitude.toFixed(8)}\n`;
+                    message += `• Precisión: ±${Math.round(locationData.accuracy)}m\n`;
+                    message += `• Navegador: ${locationData.browser.name}\n`;
+                    message += `• Cache usado: ${geolocation.canUseCachedLocation() ? 'Sí' : 'No'}\n\n`;
+                    
+                    message += '<div class="accuracy-meter">';
+                    message += `<div class="accuracy-bar" style="width: ${accuracyPercentage}%"></div>`;
+                    message += '</div>';
+                    message += `Calidad de precisión: ${accuracyPercentage.toFixed(1)}%`;
+                    
+                    showResult('precision-result', message, 'success');
+                },
+                (error) => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    
+                    let message = '<strong>❌ Error en Ubicación Rápida</strong>\n\n';
+                    message += `• Tiempo: ${duration}ms\n`;
+                    message += `• Error: ${error.message}\n`;
+                    message += `• Detalles: ${error.details}\n`;
+                    
+                    showResult('precision-result', message, 'error');
+                },
+                'test_rapido'
+            );
+        }
+
+        function testPreciseLocation() {
+            clearResults('precision-result');
+            const startTime = Date.now();
+            
+            showResult('precision-result', '🎯 Probando alta precisión...', 'info');
+            
+            geolocation.getPreciseLocation(
+                (locationData) => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    
+                    const accuracyPercentage = Math.max(0, Math.min(100, (100 - locationData.accuracy) / 100 * 100));
+                    
+                    let message = '<strong>✅ Alta Precisión Exitosa</strong>\n\n';
+                    message += `• Tiempo: ${duration}ms\n`;
+                    message += `• Coordenadas: ${locationData.latitude.toFixed(8)}, ${locationData.longitude.toFixed(8)}\n`;
+                    message += `• Precisión: ±${Math.round(locationData.accuracy)}m\n`;
+                    message += `• Altitud: ${locationData.altitude ? Math.round(locationData.altitude) + 'm' : 'N/A'}\n`;
+                    message += `• Dirección: ${locationData.heading ? Math.round(locationData.heading) + '°' : 'N/A'}\n`;
+                    message += `• Velocidad: ${locationData.speed ? (locationData.speed * 3.6).toFixed(1) + ' km/h' : 'N/A'}\n\n`;
+                    
+                    message += '<div class="accuracy-meter">';
+                    message += `<div class="accuracy-bar" style="width: ${accuracyPercentage}%"></div>`;
+                    message += '</div>';
+                    message += `Calidad de precisión: ${accuracyPercentage.toFixed(1)}%`;
+                    
+                    showResult('precision-result', message, 'success');
+                },
+                (error) => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    
+                    let message = '<strong>❌ Error en Alta Precisión</strong>\n\n';
+                    message += `• Tiempo: ${duration}ms\n`;
+                    message += `• Error: ${error.message}\n`;
+                    message += `• Detalles: ${error.details}\n`;
+                    
+                    showResult('precision-result', message, 'error');
+                },
+                'test_precision'
+            );
+        }
+
+        function testMultipleAttempts() {
+            clearResults('precision-result');
+            showResult('precision-result', '🔄 Probando múltiples intentos...', 'info');
+            
+            const attempts = [];
+            let completed = 0;
+            const totalAttempts = 3;
+            
+            for (let i = 0; i < totalAttempts; i++) {
+                const startTime = Date.now();
+                
+                geolocation.getQuickLocation(
+                    (locationData) => {
+                        const endTime = Date.now();
+                        attempts.push({
+                            attempt: i + 1,
+                            success: true,
+                            duration: endTime - startTime,
+                            accuracy: locationData.accuracy,
+                            coordinates: `${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}`
+                        });
+                        
+                        completed++;
+                        if (completed === totalAttempts) {
+                            showMultipleAttemptsResults(attempts);
+                        }
+                    },
+                    (error) => {
+                        const endTime = Date.now();
+                        attempts.push({
+                            attempt: i + 1,
+                            success: false,
+                            duration: endTime - startTime,
+                            error: error.message
+                        });
+                        
+                        completed++;
+                        if (completed === totalAttempts) {
+                            showMultipleAttemptsResults(attempts);
+                        }
+                    },
+                    `test_intento_${i + 1}`
+                );
+            }
+        }
+
+        function showMultipleAttemptsResults(attempts) {
+            let message = '<strong>📊 Resultados de Múltiples Intentos</strong>\n\n';
+            
+            attempts.forEach(attempt => {
+                if (attempt.success) {
+                    message += `<strong>Intento ${attempt.attempt}:</strong> ✅ Exitoso\n`;
+                    message += `• Tiempo: ${attempt.duration}ms\n`;
+                    message += `• Precisión: ±${Math.round(attempt.accuracy)}m\n`;
+                    message += `• Coordenadas: ${attempt.coordinates}\n\n`;
+                } else {
+                    message += `<strong>Intento ${attempt.attempt}:</strong> ❌ Fallido\n`;
+                    message += `• Tiempo: ${attempt.duration}ms\n`;
+                    message += `• Error: ${attempt.error}\n\n`;
+                }
+            });
+            
+            const successfulAttempts = attempts.filter(a => a.success);
+            if (successfulAttempts.length > 0) {
+                const bestAttempt = successfulAttempts.reduce((prev, current) => 
+                    prev.accuracy < current.accuracy ? prev : current
+                );
+                message += `<strong>🏆 Mejor intento:</strong> ${bestAttempt.attempt} (${Math.round(bestAttempt.accuracy)}m)`;
+            }
+            
+            showResult('precision-result', message, 'success');
+        }
+
+        function compareAllMethods() {
+            clearResults('comparison-result');
+            showResult('comparison-result', '📊 Comparando todos los métodos...', 'info');
+            
+            const methods = [
+                { name: 'Rápido', method: 'getQuickLocation' },
+                { name: 'Preciso', method: 'getPreciseLocation' }
+            ];
+            
+            let completedTests = 0;
+            const results = [];
+            
+            methods.forEach((method, index) => {
+                const startTime = Date.now();
+                
+                geolocation[method.method](
+                    (locationData) => {
+                        const endTime = Date.now();
+                        const duration = endTime - startTime;
+                        
+                        results.push({
+                            name: method.name,
+                            duration: duration,
+                            accuracy: locationData.accuracy,
+                            success: true,
+                            coordinates: `${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}`
+                        });
+                        
+                        completedTests++;
+                        if (completedTests === methods.length) {
+                            showComparisonResults(results);
+                        }
+                    },
+                    (error) => {
+                        const endTime = Date.now();
+                        const duration = endTime - startTime;
+                        
+                        results.push({
+                            name: method.name,
+                            duration: duration,
+                            accuracy: null,
+                            success: false,
+                            error: error.message
+                        });
+                        
+                        completedTests++;
+                        if (completedTests === methods.length) {
+                            showComparisonResults(results);
+                        }
+                    },
+                    'comparison_test'
+                );
+            });
+        }
+
+        function showComparisonResults(results) {
+            let message = '<strong>📊 Comparación de Métodos</strong>\n\n';
+            
+            results.forEach(result => {
+                if (result.success) {
+                    message += `<strong>${result.name}:</strong> ✅ Exitoso\n`;
+                    message += `• Tiempo: ${result.duration}ms\n`;
+                    message += `• Precisión: ±${Math.round(result.accuracy)}m\n`;
+                    message += `• Coordenadas: ${result.coordinates}\n\n`;
+                } else {
+                    message += `<strong>${result.name}:</strong> ❌ Fallido\n`;
+                    message += `• Tiempo: ${result.duration}ms\n`;
+                    message += `• Error: ${result.error}\n\n`;
+                }
+            });
+            
+            // Encontrar el más rápido y preciso
+            const successfulResults = results.filter(r => r.success);
+            if (successfulResults.length > 1) {
+                const fastest = successfulResults.reduce((prev, current) => 
+                    prev.duration < current.duration ? prev : current
+                );
+                const mostAccurate = successfulResults.reduce((prev, current) => 
+                    prev.accuracy < current.accuracy ? prev : current
+                );
+                
+                message += `<strong>🏆 Más rápido:</strong> ${fastest.name} (${fastest.duration}ms)\n`;
+                message += `<strong>🎯 Más preciso:</strong> ${mostAccurate.name} (±${Math.round(mostAccurate.accuracy)}m)`;
+            }
+            
+            showResult('comparison-result', message, 'success');
+        }
+
+        function showPermissionHelp() {
+            clearResults('help-result');
+            const browserInfo = geolocation.getBrowserInfo();
+            const instructions = geolocation.getPermissionInstructions();
+            
+            let message = '<strong>🔐 Solución: Permisos Denegados</strong>\n\n';
+            message += `Navegador detectado: ${browserInfo.name}\n\n`;
+            message += '<strong>Pasos a seguir:</strong>\n';
+            message += instructions;
+            
+            showResult('help-result', message, 'info');
+        }
+
+        function showAccuracyHelp() {
+            clearResults('help-result');
+            
+            let message = '<strong>🎯 Solución: Baja Precisión</strong>\n\n';
+            message += '<strong>Mejoras recomendadas:</strong>\n';
+            message += '• Mueve el dispositivo a un área abierta\n';
+            message += '• Evita edificios altos y estructuras metálicas\n';
+            message += '• Verifica que el GPS esté activado\n';
+            message += '• Intenta cerca de una ventana o al aire libre\n';
+            message += '• Espera unos segundos para que el GPS se estabilice\n';
+            message += '• Usa el método de "Alta Precisión" en lugar del rápido\n';
+            
+            showResult('help-result', message, 'info');
+        }
+
+        function showTimeoutHelp() {
+            clearResults('help-result');
+            
+            let message = '<strong>⏱️ Solución: Timeout</strong>\n\n';
+            message += '<strong>Causas comunes:</strong>\n';
+            message += '• Conexión a internet lenta o inestable\n';
+            message += '• GPS desactivado o con señal débil\n';
+            message += '• Navegador con configuración restrictiva\n';
+            message += '• Firewall bloqueando la geolocalización\n\n';
+            message += '<strong>Soluciones:</strong>\n';
+            message += '• Verifica tu conexión a internet\n';
+            message += '• Activa el GPS en tu dispositivo\n';
+            message += '• Intenta en una ubicación diferente\n';
+            message += '• Recarga la página y vuelve a intentar\n';
+            message += '• Verifica la configuración del navegador\n';
+            
+            showResult('help-result', message, 'info');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Geolocalización Mejorada</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .result-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { border-color: #28a745; background-color: #d4edda; }
+        .error { border-color: #dc3545; background-color: #f8d7da; }
+        .info { border-color: #17a2b8; background-color: #d1ecf1; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="text-center mb-4">Test - Geolocalización Mejorada</h1>
+        
+        <div class="test-section">
+            <h3>1. Información del Sistema</h3>
+            <div class="result-box info">
+                <strong>Mejoras implementadas:</strong><br>
+                • Cache de ubicación (30 segundos)<br>
+                • Método rápido (getQuickLocation)<br>
+                • Timeout reducido (10-15 segundos)<br>
+                • Precisión estándar inicial<br>
+                • Máximo 2 intentos<br>
+                • Evita solicitudes simultáneas<br>
+                • Compatibilidad multi-navegador<br>
+                • Verificación de permisos automática
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Verificación de Compatibilidad</h3>
+            <p>Verifica que tu navegador sea compatible:</p>
+            <button class="btn btn-info" onclick="checkCompatibility()">Verificar Compatibilidad</button>
+            <div id="compatibility-result" class="mt-3"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Test de Ubicación Rápida</h3>
+            <p>Prueba el nuevo método rápido de geolocalización:</p>
+            <button class="btn btn-primary" onclick="testQuickLocation()">Probar Ubicación Rápida</button>
+            <div id="quick-result" class="mt-3"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Test de Cache</h3>
+            <p>Prueba el sistema de cache (debe ser instantáneo en la segunda llamada):</p>
+            <button class="btn btn-success" onclick="testCache()">Probar Cache</button>
+            <div id="cache-result" class="mt-3"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>5. Test de Ubicación Precisión</h3>
+            <p>Prueba el método de alta precisión (más lento pero más preciso):</p>
+            <button class="btn btn-warning" onclick="testPreciseLocation()">Probar Alta Precisión</button>
+            <div id="precise-result" class="mt-3"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>6. Comparación de Tiempos</h3>
+            <p>Compara los tiempos de respuesta de diferentes métodos:</p>
+            <button class="btn btn-info" onclick="compareMethods()">Comparar Métodos</button>
+            <div id="comparison-result" class="mt-3"></div>
+        </div>
+    </div>
+
+    <script src="../js/geolocation-utils.js"></script>
+    <script>
+        let geolocation;
+        let testResults = [];
+
+        // Inicializar geolocalización
+        window.onload = function() {
+            geolocation = new EnhancedGeolocation();
+            console.log('🌍 Sistema de geolocalización inicializado');
+            
+            // Auto-verificar compatibilidad al cargar
+            setTimeout(checkCompatibility, 1000);
+        };
+
+        function showResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result-box ${type}`;
+            resultDiv.innerHTML = message;
+            container.appendChild(resultDiv);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        async function checkCompatibility() {
+            clearResults('compatibility-result');
+            
+            showResult('compatibility-result', '🔍 Verificando compatibilidad del navegador...', 'info');
+            
+            try {
+                const result = await window.initializeGeolocation();
+                const browserInfo = result.browser;
+                
+                let message = '<strong>📱 Información del Navegador</strong><br>';
+                message += `<strong>Navegador:</strong> ${browserInfo.name} ${browserInfo.version}<br>`;
+                message += `<strong>Plataforma:</strong> ${browserInfo.platform}<br>`;
+                message += `<strong>Idioma:</strong> ${browserInfo.language}<br>`;
+                message += `<strong>Móvil:</strong> ${browserInfo.isMobile ? 'Sí' : 'No'}<br><br>`;
+                
+                if (result.supported) {
+                    message += '<strong>✅ Compatibilidad</strong><br>';
+                    message += '• Geolocalización: Soportada<br>';
+                    
+                    if (result.permissionStatus) {
+                        const status = result.permissionStatus;
+                        message += `<strong>🔐 Estado de Permisos:</strong> ${status.state || 'Desconocido'}<br>`;
+                        
+                        if (status.granted === true) {
+                            message += '• Permisos: ✅ Concedidos<br>';
+                        } else if (status.granted === false) {
+                            message += '• Permisos: ❌ Denegados<br>';
+                        } else {
+                            message += '• Permisos: ⚠️ No verificados<br>';
+                        }
+                    }
+                    
+                    message += '<br><strong>🎯 Funcionalidades Disponibles:</strong><br>';
+                    message += '• Ubicación rápida<br>';
+                    message += '• Cache de ubicación<br>';
+                    message += '• Alta precisión<br>';
+                    message += '• Instrucciones específicas por navegador<br>';
+                    
+                    showResult('compatibility-result', message, 'success');
+                } else {
+                    message += '<strong>❌ Compatibilidad</strong><br>';
+                    message += '• Geolocalización: No soportada<br>';
+                    message += '• Razón: ' + (result.message || 'Navegador no compatible') + '<br>';
+                    
+                    showResult('compatibility-result', message, 'error');
+                }
+                
+            } catch (error) {
+                showResult('compatibility-result', `
+                    <strong>❌ Error al verificar compatibilidad</strong><br>
+                    Error: ${error.message}
+                `, 'error');
+            }
+        }
+
+        function testQuickLocation() {
+            clearResults('quick-result');
+            const startTime = Date.now();
+            
+            showResult('quick-result', '🚀 Iniciando test de ubicación rápida...', 'info');
+            
+            geolocation.getQuickLocation(
+                (locationData) => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    
+                    const message = `
+                        <strong>✅ Ubicación Rápida Exitosa</strong><br>
+                        <strong>Tiempo:</strong> ${duration}ms<br>
+                        <strong>Coordenadas:</strong> ${locationData.latitude.toFixed(6)}, ${locationData.longitude.toFixed(6)}<br>
+                        <strong>Precisión:</strong> ±${Math.round(locationData.accuracy)}m<br>
+                        <strong>Contexto:</strong> ${locationData.context}<br>
+                        <strong>Cache usado:</strong> ${geolocation.canUseCachedLocation() ? 'Sí' : 'No'}<br>
+                        <strong>Timestamp:</strong> ${new Date(locationData.timestamp).toLocaleString()}
+                    `;
+                    
+                    showResult('quick-result', message, 'success');
+                },
+                (error) => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    
+                    const message = `
+                        <strong>❌ Error en Ubicación Rápida</strong><br>
+                        <strong>Tiempo:</strong> ${duration}ms<br>
+                        <strong>Error:</strong> ${error.message}<br>
+                        <strong>Detalles:</strong> ${error.details || 'N/A'}
+                    `;
+                    
+                    showResult('quick-result', message, 'error');
+                },
+                'test_rapido'
+            );
+        }
+
+        function testCache() {
+            clearResults('cache-result');
+            
+            showResult('cache-result', '🔄 Probando sistema de cache...', 'info');
+            
+            // Primera llamada (debe obtener ubicación)
+            const startTime1 = Date.now();
+            geolocation.getQuickLocation(
+                (locationData1) => {
+                    const endTime1 = Date.now();
+                    const duration1 = endTime1 - startTime1;
+                    
+                    showResult('cache-result', `
+                        <strong>📡 Primera llamada:</strong> ${duration1}ms<br>
+                        <strong>Cache usado:</strong> No (primera vez)
+                    `, 'info');
+                    
+                    // Segunda llamada (debe usar cache)
+                    setTimeout(() => {
+                        const startTime2 = Date.now();
+                        geolocation.getQuickLocation(
+                            (locationData2) => {
+                                const endTime2 = Date.now();
+                                const duration2 = endTime2 - startTime2;
+                                
+                                const cacheUsed = geolocation.canUseCachedLocation();
+                                
+                                showResult('cache-result', `
+                                    <strong>⚡ Segunda llamada:</strong> ${duration2}ms<br>
+                                    <strong>Cache usado:</strong> ${cacheUsed ? 'Sí' : 'No'}<br>
+                                    <strong>Mejora de velocidad:</strong> ${duration1 > 0 ? Math.round((duration1 - duration2) / duration1 * 100) : 0}%<br>
+                                    <strong>Coordenadas:</strong> ${locationData2.latitude.toFixed(6)}, ${locationData2.longitude.toFixed(6)}
+                                `, cacheUsed ? 'success' : 'error');
+                            },
+                            (error) => {
+                                showResult('cache-result', `
+                                    <strong>❌ Error en segunda llamada:</strong> ${error.message}
+                                `, 'error');
+                            },
+                            'test_cache'
+                        );
+                    }, 1000);
+                },
+                (error) => {
+                    showResult('cache-result', `
+                        <strong>❌ Error en primera llamada:</strong> ${error.message}
+                    `, 'error');
+                },
+                'test_cache'
+            );
+        }
+
+        function testPreciseLocation() {
+            clearResults('precise-result');
+            const startTime = Date.now();
+            
+            showResult('precise-result', '🎯 Iniciando test de alta precisión...', 'info');
+            
+            geolocation.getPreciseLocation(
+                (locationData) => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    
+                    const message = `
+                        <strong>✅ Alta Precisión Exitosa</strong><br>
+                        <strong>Tiempo:</strong> ${duration}ms<br>
+                        <strong>Coordenadas:</strong> ${locationData.latitude.toFixed(8)}, ${locationData.longitude.toFixed(8)}<br>
+                        <strong>Precisión:</strong> ±${Math.round(locationData.accuracy)}m<br>
+                        <strong>Contexto:</strong> ${locationData.context}<br>
+                        <strong>Altitud:</strong> ${locationData.altitude ? Math.round(locationData.altitude) + 'm' : 'N/A'}<br>
+                        <strong>Dirección:</strong> ${locationData.heading ? Math.round(locationData.heading) + '°' : 'N/A'}<br>
+                        <strong>Velocidad:</strong> ${locationData.speed ? (locationData.speed * 3.6).toFixed(1) + ' km/h' : 'N/A'}
+                    `;
+                    
+                    showResult('precise-result', message, 'success');
+                },
+                (error) => {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    
+                    const message = `
+                        <strong>❌ Error en Alta Precisión</strong><br>
+                        <strong>Tiempo:</strong> ${duration}ms<br>
+                        <strong>Error:</strong> ${error.message}<br>
+                        <strong>Detalles:</strong> ${error.details || 'N/A'}
+                    `;
+                    
+                    showResult('precise-result', message, 'error');
+                },
+                'test_precision'
+            );
+        }
+
+        function compareMethods() {
+            clearResults('comparison-result');
+            
+            showResult('comparison-result', '📊 Iniciando comparación de métodos...', 'info');
+            
+            const methods = [
+                { name: 'Rápido', method: 'getQuickLocation' },
+                { name: 'Preciso', method: 'getPreciseLocation' }
+            ];
+            
+            let completedTests = 0;
+            const results = [];
+            
+            methods.forEach((method, index) => {
+                const startTime = Date.now();
+                
+                geolocation[method.method](
+                    (locationData) => {
+                        const endTime = Date.now();
+                        const duration = endTime - startTime;
+                        
+                        results.push({
+                            name: method.name,
+                            duration: duration,
+                            accuracy: locationData.accuracy,
+                            success: true
+                        });
+                        
+                        completedTests++;
+                        if (completedTests === methods.length) {
+                            showComparisonResults(results);
+                        }
+                    },
+                    (error) => {
+                        const endTime = Date.now();
+                        const duration = endTime - startTime;
+                        
+                        results.push({
+                            name: method.name,
+                            duration: duration,
+                            accuracy: null,
+                            success: false,
+                            error: error.message
+                        });
+                        
+                        completedTests++;
+                        if (completedTests === methods.length) {
+                            showComparisonResults(results);
+                        }
+                    },
+                    'comparison_test'
+                );
+            });
+        }
+
+        function showComparisonResults(results) {
+            let message = '<strong>📊 Resultados de la Comparación</strong><br><br>';
+            
+            results.forEach(result => {
+                if (result.success) {
+                    message += `
+                        <strong>${result.name}:</strong><br>
+                        • Tiempo: ${result.duration}ms<br>
+                        • Precisión: ±${Math.round(result.accuracy)}m<br>
+                        • Estado: ✅ Exitoso<br><br>
+                    `;
+                } else {
+                    message += `
+                        <strong>${result.name}:</strong><br>
+                        • Tiempo: ${result.duration}ms<br>
+                        • Estado: ❌ Error<br>
+                        • Error: ${result.error}<br><br>
+                    `;
+                }
+            });
+            
+            // Encontrar el más rápido
+            const successfulResults = results.filter(r => r.success);
+            if (successfulResults.length > 1) {
+                const fastest = successfulResults.reduce((prev, current) => 
+                    prev.duration < current.duration ? prev : current
+                );
+                message += `<strong>🏆 Más rápido:</strong> ${fastest.name} (${fastest.duration}ms)`;
+            }
+            
+            showResult('comparison-result', message, 'success');
+        }
+    </script>
+</body>
+</html>

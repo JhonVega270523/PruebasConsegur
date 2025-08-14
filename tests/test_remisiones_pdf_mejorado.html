@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba - PDF Remisiones Mejorado</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>Prueba - PDF de Remisiones Mejorado</h4>
+            </div>
+            <div class="card-body">
+                <h5>🔧 Pasos para Verificar las Mejoras en el PDF de Remisiones:</h5>
+                <div class="alert alert-info">
+                    <strong>📋 Instrucciones:</strong> Sigue estos pasos para verificar que el PDF de remisiones incluya el logo y las horas formateadas correctamente
+                </div>
+                
+                <h5>1. ✅ Verificar que el Logo Aparezca en el PDF:</h5>
+                <ol>
+                    <li><strong>Ve a la sección "Remisiones"</strong></li>
+                    <li><strong>Busca una remisión existente o crea una nueva</strong></li>
+                    <li><strong>Haz clic en "Descargar PDF"</strong></li>
+                    <li><strong>Verifica que el logo de Consegur aparezca en la esquina superior izquierda</strong></li>
+                    <li><strong>El logo debe ser claro y visible</strong></li>
+                </ol>
+                
+                <h5>2. ✅ Verificar Formato de Horas en el PDF:</h5>
+                <ol>
+                    <li><strong>En el PDF descargado, busca las secciones:</strong>
+                        <ul>
+                            <li>✅ <strong>Hora Inicio:</strong> Debe mostrar formato HH:MM:SS (ej: 11:25:27)</li>
+                            <li>✅ <strong>Hora Finalización:</strong> Debe mostrar formato HH:MM:SS (ej: 14:30:15)</li>
+                        </ul>
+                    </li>
+                    <li><strong>Verifica que NO aparezca el formato completo ISO:</strong>
+                        <ul>
+                            <li>❌ <strong>NO debe aparecer:</strong> 2025-08-07T11:25:27.558Z</li>
+                            <li>✅ <strong>SÍ debe aparecer:</strong> 11:25:27</li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h5>3. ✅ Crear Remisión de Prueba (si no hay datos):</h5>
+                <ol>
+                    <li><strong>Ve a "Servicios" y crea un servicio de prueba:</strong>
+                        <div class="alert alert-success">
+                            <strong>Fecha:</strong> Hoy<br>
+                            <strong>Código de Servicio:</strong> Selecciona uno existente (ej: CS001)<br>
+                            <strong>Ubicación:</strong> Calle 123 #4-56, Barrio Centro<br>
+                            <strong>Nombre del Cliente:</strong> Juan Pérez<br>
+                            <strong>Teléfono del Cliente:</strong> 3001234567<br>
+                            <strong>Estado:</strong> Pendiente
+                        </div>
+                    </li>
+                    <li><strong>Asigna el servicio a un técnico</strong></li>
+                    <li><strong>Cambia a la vista de técnico y finaliza el servicio</strong></li>
+                    <li><strong>Ve a "Remisiones" y genera una remisión desde ese servicio</strong></li>
+                    <li><strong>Descarga el PDF y verifica las mejoras</strong></li>
+                </ol>
+                
+                <h5>4. ✅ Verificar Estructura Completa del PDF:</h5>
+                <div class="alert alert-warning">
+                    <strong>El PDF debe contener:</strong>
+                    <ul>
+                        <li>✅ <strong>Logo de Consegur</strong> en la esquina superior izquierda</li>
+                        <li>✅ <strong>Información de la empresa</strong> en la parte superior derecha</li>
+                        <li>✅ <strong>Título "REMISIÓN DE SERVICIO"</strong> centrado</li>
+                        <li>✅ <strong>Datos del servicio</strong> organizados en dos columnas</li>
+                        <li>✅ <strong>Horas formateadas correctamente</strong> (HH:MM:SS)</li>
+                        <li>✅ <strong>Sección de firmas</strong> al final</li>
+                        <li>✅ <strong>Firmas del técnico y cliente</strong> (si existen)</li>
+                    </ul>
+                </div>
+                
+                <h5>🎯 Formato de Horas Esperado:</h5>
+                <div class="alert alert-secondary">
+                    <strong>✅ Formato correcto de horas:</strong><br>
+                    <code>• Hora Inicio: 11:25:27</code><br>
+                    <code>• Hora Finalización: 14:30:15</code><br><br>
+                    <strong>❌ Formato incorrecto (NO debe aparecer):</strong><br>
+                    <code>• Hora Inicio: 2025-08-07T11:25:27.558Z</code><br>
+                    <code>• Hora Finalización: 2025-08-07T14:30:15.123Z</code>
+                </div>
+                
+                <h5>❌ Si el Logo No Aparece:</h5>
+                <div class="alert alert-danger">
+                    <strong>Posibles problemas y soluciones:</strong>
+                    <ul>
+                        <li><strong>Archivo no encontrado:</strong> Verifica que assets/logoconsegur.png esté en la carpeta assets</li>
+                        <li><strong>Error de CORS:</strong> Verifica que el archivo sea accesible desde el navegador</li>
+                        <li><strong>Error de carga:</strong> Revisa la consola del navegador para errores</li>
+                        <li><strong>Formato incorrecto:</strong> Verifica que el archivo sea una imagen PNG válida</li>
+                    </ul>
+                </div>
+                
+                <h5>❌ Si las Horas No Se Formatean Correctamente:</h5>
+                <div class="alert alert-danger">
+                    <strong>Posibles problemas y soluciones:</strong>
+                    <ul>
+                        <li><strong>Formato de fecha incorrecto:</strong> Verifica que las fechas estén en formato ISO válido</li>
+                        <li><strong>Error en la función:</strong> Revisa la consola para errores de JavaScript</li>
+                        <li><strong>Datos faltantes:</strong> Verifica que las remisiones tengan datos de hora</li>
+                        <li><strong>Función no definida:</strong> Verifica que formatTime esté definida correctamente</li>
+                    </ul>
+                </div>
+                
+                <h5>🔧 Comandos de Depuración:</h5>
+                <div class="alert alert-info">
+                    <strong>Comandos útiles para depurar:</strong><br>
+                    <code>// Verificar función formatTime</code><br>
+                    <code>console.log(formatTime('2025-08-07T11:25:27.558Z'))</code><br><br>
+                    <code>// Verificar datos de remisión</code><br>
+                    <code>const remision = remisiones[0]</code><br>
+                    <code>console.log('Hora inicio:', remision.horaInicio)</code><br>
+                    <code>console.log('Hora formateada:', formatTime(remision.horaInicio))</code><br><br>
+                    <code>// Verificar carga del logo</code><br>
+                    <code>const img = new Image()</code><br>
+                    <code>img.onload = () => console.log('Logo cargado correctamente')</code><br>
+                    <code>img.onerror = () => console.log('Error al cargar logo')</code><br>
+                                            <code>img.src = '../assets/logoconsegur.png'</code>
+                </div>
+                
+                <h5>📋 Checklist de Verificación:</h5>
+                <ul>
+                    <li>✅ ¿El logo de Consegur aparece en el PDF?</li>
+                    <li>✅ ¿El logo está en la esquina superior izquierda?</li>
+                    <li>✅ ¿El logo es claro y visible?</li>
+                    <li>✅ ¿Las horas de inicio muestran formato HH:MM:SS?</li>
+                    <li>✅ ¿Las horas de finalización muestran formato HH:MM:SS?</li>
+                    <li>✅ ¿No aparecen fechas completas ISO en las horas?</li>
+                    <li>✅ ¿El PDF se genera sin errores?</li>
+                    <li>✅ ¿La estructura del PDF es correcta?</li>
+                    <li>✅ ¿Las firmas aparecen correctamente (si existen)?</li>
+                </ul>
+                
+                <h5>🎯 Resultado Esperado:</h5>
+                <div class="alert alert-success">
+                    <strong>✅ Al descargar el PDF de remisión:</strong>
+                    <ul>
+                        <li>El logo de Consegur debe aparecer en la esquina superior izquierda</li>
+                        <li>Las horas de inicio y finalización deben mostrar formato HH:MM:SS</li>
+                        <li>No debe aparecer el formato completo ISO en las horas</li>
+                        <li>El PDF debe tener una estructura profesional y completa</li>
+                        <li>No debe haber errores en la consola del navegador</li>
+                        <li>El PDF debe descargarse correctamente</li>
+                    </ul>
+                </div>
+                
+                <h5>🔧 Mejoras Implementadas:</h5>
+                <div class="alert alert-primary">
+                    <strong>✅ Se implementaron las siguientes mejoras:</strong>
+                    <ul>
+                        <li><strong>Logo dinámico:</strong> Se carga desde assets/logoconsegur.png en lugar de base64 embebido</li>
+                        <li><strong>Función formatTime:</strong> Convierte fechas ISO a formato HH:MM:SS</li>
+                        <li><strong>Manejo de errores:</strong> El PDF se genera incluso si hay problemas con el logo</li>
+                        <li><strong>Validación de datos:</strong> Maneja casos donde las fechas son inválidas</li>
+                        <li><strong>Logs informativos:</strong> Información detallada en la consola para depuración</li>
+                    </ul>
+                </div>
+                
+                <a href="index.html" class="btn btn-primary">Ir al Sistema</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

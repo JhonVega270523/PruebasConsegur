@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imágenes de Actividades de Desarrollo - Consegur S.A.S.</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .activity-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        .activity-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .activity-content {
+            padding: 25px;
+        }
+        .code-snippet {
+            background: #2d3748;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        .ui-preview {
+            background: #f7fafc;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .period-divider {
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 40px 0;
+            border-radius: 8px;
+        }
+        .activity-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .type-feature { background: #48bb78; color: white; }
+        .type-bug-fix { background: #f56565; color: white; }
+        .type-improvement { background: #4299e1; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-5">
+                    <i class="bi bi-images"></i>
+                    Imágenes de Actividades de Desarrollo
+                </h1>
+                <h3 class="text-center text-muted mb-4">Consegur S.A.S. - Sistema de Gestión de Servicios</h3>
+
+                <!-- PERÍODO 1 -->
+                <div class="period-divider">
+                    📅 PERÍODO 1: 03/07/2025 - 17/07/2025
+                    <br><small>Fechas: 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17 de julio</small>
+                </div>
+
+                <!-- 2025-07-03 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-search"></i> Investigación del problema del modal de finalización</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Jueves, 3 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-bug" style="font-size: 3rem; color: #e53e3e;"></i>
+                            <h5 class="mt-3">Problema Identificado</h5>
+                            <p>Modal de finalización no se abre al hacer clic en el botón</p>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                El técnico hace clic en "Finalizar Servicio" pero el modal no aparece
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+// Debug logs agregados para identificar el problema
+console.log('Botón finalizar clickeado');
+console.log('Modal element:', document.getElementById('registerServiceModal'));
+console.log('Bootstrap Modal instance:', bootstrap.Modal.getInstance(modalElement));
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-04 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-wrench"></i> Corrección de IDs de checkboxes en modal de finalización</h4>
+                            <span class="activity-type type-bug-fix">Bug Fix</span>
+                        </div>
+                        <p class="mb-0">Viernes, 4 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-check-square" style="font-size: 3rem; color: #38a169;"></i>
+                            <h5 class="mt-3">Corrección de IDs</h5>
+                            <p>Checkboxes ahora se deshabilitan correctamente</p>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" disabled checked>
+                                <label class="form-check-label">Bóvedas</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" disabled checked>
+                                <label class="form-check-label">Puertas</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" disabled checked>
+                                <label class="form-check-label">Pasatulas</label>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+// IDs corregidos en openServiceFinalizationModal
+document.getElementById('service-type-bovedas').disabled = true;
+document.getElementById('service-type-puertas').disabled = true;
+document.getElementById('service-type-pasatulas').disabled = true;
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-07 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-bell"></i> Sistema de notificaciones mejorado</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Domingo, 7 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-bell-fill" style="font-size: 3rem; color: #3182ce;"></i>
+                            <h5 class="mt-3">Notificaciones Mejoradas</h5>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                Sistema de notificaciones más robusto implementado
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+function sendNotification(userType, message) {
+    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+    const newNotification = {
+        id: Date.now(),
+        message: message,
+        timestamp: new Date().toISOString(),
+        read: false,
+        userType: userType
+    };
+    notifications.push(newNotification);
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+    updateNotificationBadges();
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-08 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-geo-alt"></i> Implementación de geolocalización precisa</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Lunes, 8 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-geo-alt-fill" style="font-size: 3rem; color: #38a169;"></i>
+                            <h5 class="mt-3">Geolocalización Precisa</h5>
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i>
+                                Ubicación registrada con precisión de ±5 metros
+                            </div>
+                            <small class="text-muted">Lat: 6.2442, Lon: -75.5812</small>
+                        </div>
+                        <div class="code-snippet">
+// Implementación de geolocalización con alta precisión
+navigator.geolocation.getCurrentPosition(
+    (position) => {
+        const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            timestamp: new Date().toISOString()
+        };
+        // Guardar ubicación y cerrar modal
+    },
+    (error) => {
+        showAlert('Error al obtener ubicación: ' + error.message);
+    },
+    {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+    }
+);
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-09 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-lock"></i> Campo DESCRIPCION bloqueado en finalización</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Martes, 9 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-lock-fill" style="font-size: 3rem; color: #d69e2e;"></i>
+                            <h5 class="mt-3">Campo Bloqueado</h5>
+                            <div class="form-group">
+                                <label>DESCRIPCIÓN</label>
+                                <textarea class="form-control" disabled rows="3">Instalación de sistema de seguridad en oficina principal</textarea>
+                            </div>
+                            <small class="text-muted">Solo fotos y firmas son editables</small>
+                        </div>
+                        <div class="code-snippet">
+// Campo descripción bloqueado y pre-llenado
+const descriptionField = document.getElementById('service-description');
+descriptionField.value = service.description;
+descriptionField.disabled = true;
+descriptionField.style.backgroundColor = '#f8f9fa';
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-10 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-camera"></i> Integración de captura de fotos y firmas</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Miércoles, 10 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-camera-fill" style="font-size: 3rem; color: #805ad5;"></i>
+                            <h5 class="mt-3">Captura de Evidencias</h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="border rounded p-2 text-center">
+                                        <i class="bi bi-image"></i>
+                                        <br><small>Foto del servicio</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="border rounded p-2 text-center">
+                                        <i class="bi bi-pen"></i>
+                                        <br><small>Firma del técnico</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+// Integración de SignaturePad y captura de fotos
+const signaturePad = new SignaturePad(document.getElementById('signature-pad'), {
+    backgroundColor: 'rgb(255, 255, 255)'
+});
+
+// Captura de foto con cámara
+const video = document.getElementById('camera-video');
+const canvas = document.getElementById('photo-canvas');
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => video.srcObject = stream);
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-11 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-trash"></i> Eliminación de alerta "Servicio guardado exitosamente"</h4>
+                            <span class="activity-type type-bug-fix">Bug Fix</span>
+                        </div>
+                        <p class="mb-0">Jueves, 11 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #38a169;"></i>
+                            <h5 class="mt-3">Alerta Eliminada</h5>
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i>
+                                ✅ Servicio iniciado exitosamente con ubicación
+                            </div>
+                            <small class="text-muted">Solo se muestran alertas específicas con información relevante</small>
+                        </div>
+                        <div class="code-snippet">
+// Eliminación de alerta genérica
+} else if (status === 'En proceso') {
+    showAlert(`✅ Servicio iniciado exitosamente.\n\n📍 Ubicación registrada:\nLatitud: ${startLocation?.latitude?.toFixed(8) || 'N/A'}\nLongitud: ${startLocation?.longitude?.toFixed(8) || 'N/A'}\nPrecisión: ±${Math.round(startLocation?.accuracy || 0)} metros\n\nEl estado del servicio ha cambiado a "En proceso".`);
+}
+// Se eliminó: showAlert('Servicio guardado exitosamente.');
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-14 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-speedometer2"></i> Optimización de rendimiento en validaciones</h4>
+                            <span class="activity-type type-improvement">Improvement</span>
+                        </div>
+                        <p class="mb-0">Domingo, 14 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-lightning-fill" style="font-size: 3rem; color: #f6ad55;"></i>
+                            <h5 class="mt-3">Validaciones Optimizadas</h5>
+                            <div class="alert alert-info">
+                                <i class="bi bi-speedometer2"></i>
+                                Sistema más eficiente en validación de datos
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+function validateServiceData(serviceData) {
+    const errors = [];
+    
+    // Validaciones optimizadas con early returns
+    if (!serviceData.clientName || serviceData.clientName.trim() === '') {
+        errors.push('El nombre del cliente es obligatorio');
+    }
+    
+    if (!serviceData.serviceType || serviceData.serviceType.trim() === '') {
+        errors.push('El tipo de servicio es obligatorio');
+    }
+    
+    return errors.length === 0 ? null : errors;
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-15 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-laptop"></i> Corrección de dropdown incompleto en vista laptop</h4>
+                            <span class="activity-type type-bug-fix">Bug Fix</span>
+                        </div>
+                        <p class="mb-0">Lunes, 15 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-chevron-down" style="font-size: 3rem; color: #3182ce;"></i>
+                            <h5 class="mt-3">Dropdown Corregido</h5>
+                            <div class="dropdown">
+                                <button class="btn btn-secondary dropdown-toggle" type="button">
+                                    Cambiar Estado
+                                </button>
+                                <ul class="dropdown-menu show">
+                                    <li><a class="dropdown-item" href="#">En proceso</a></li>
+                                    <li><a class="dropdown-item" href="#">Finalizado</a></li>
+                                    <li><a class="dropdown-item" href="#">Cancelado</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+/* CSS para corregir dropdown en vista laptop */
+.table .dropdown-menu {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-md);
+    z-index: 1050;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.dropdown-menu.show {
+    display: block !important;
+    z-index: 1050 !important;
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-16 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-layers"></i> Corrección de z-index para alertas</h4>
+                            <span class="activity-type type-bug-fix">Bug Fix</span>
+                        </div>
+                        <p class="mb-0">Martes, 16 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-exclamation-triangle-fill" style="font-size: 3rem; color: #e53e3e;"></i>
+                            <h5 class="mt-3">Alertas Sobre Modales</h5>
+                            <div class="alert alert-warning" style="z-index: 1060;">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                Las alertas ahora aparecen por encima de otros modales
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+/* CSS para asegurar que las alertas aparezcan por encima */
+#customAlertModal {
+    z-index: 1060 !important;
+}
+
+#customAlertModal .modal-dialog {
+    z-index: 1061 !important;
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-17 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-x-circle"></i> Mejora en modal de cancelación</h4>
+                            <span class="activity-type type-improvement">Improvement</span>
+                        </div>
+                        <p class="mb-0">Miércoles, 17 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-x-circle-fill" style="font-size: 3rem; color: #e53e3e;"></i>
+                            <h5 class="mt-3">Cancelación Mejorada</h5>
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i>
+                                ✅ Servicio cancelado exitosamente con ubicación
+                            </div>
+                            <small class="text-muted">Modal se cierra automáticamente y muestra ubicación</small>
+                        </div>
+                        <div class="code-snippet">
+// Cerrar modal antes de mostrar alerta
+cancelReasonModal.hide();
+setTimeout(() => {
+    showAlert(`✅ Servicio cancelado exitosamente.\n\n📍 Ubicación registrada:\nLatitud: ${oldService.finalizationOrCancellationLocation?.latitude?.toFixed(8) || 'N/A'}\nLongitud: ${oldService.finalizationOrCancellationLocation?.longitude?.toFixed(8) || 'N/A'}\nPrecisión: ±${Math.round(oldService.finalizationOrCancellationLocation?.accuracy || 0)} metros\n\nMotivo de cancelación: ${cancellationReason}`);
+}, 300);
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PERÍODO 2 -->
+                <div class="period-divider">
+                    📅 PERÍODO 2: 18/07/2025 - 01/08/2025
+                    <br><small>Fechas: 18, 21, 22, 23, 24, 25, 28, 29, 30, 31 de julio y 1 de agosto</small>
+                </div>
+
+                <!-- 2025-07-18 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-funnel"></i> Limpieza de filtros al entrar al módulo servicios</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Viernes, 18 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-funnel" style="font-size: 3rem; color: #3182ce;"></i>
+                            <h5 class="mt-3">Filtros Limpios</h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="date" class="form-control" placeholder="Fecha inicio">
+                                </div>
+                                <div class="col-6">
+                                    <input type="date" class="form-control" placeholder="Fecha fin">
+                                </div>
+                            </div>
+                            <small class="text-muted">Todos los filtros se limpian automáticamente</small>
+                        </div>
+                        <div class="code-snippet">
+// Limpiar filtros al entrar al módulo de servicios
+function showAdminDashboard() {
+    // ... código existente ...
+    
+    // Limpiar todos los filtros al entrar al módulo de servicios
+    clearFilters();
+    
+    console.log('Admin dashboard mostrado correctamente');
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-21 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-file-earmark-excel"></i> Creación de exportación Excel independiente</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Domingo, 21 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-file-earmark-excel" style="font-size: 3rem; color: #38a169;"></i>
+                            <h5 class="mt-3">Exportación Excel</h5>
+                            <div class="btn-group">
+                                <button class="btn btn-success">Exportar Período 1</button>
+                                <button class="btn btn-info">Exportar Período 2</button>
+                                <button class="btn btn-primary">Exportar Ambos</button>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+// Archivo independiente bitacoras.html
+function exportToExcelMultipleSheets(data1, data2) {
+    const wb = XLSX.utils.book_new();
+    
+    // Hoja 1: Período 1
+    const ws1 = XLSX.utils.json_to_sheet(data1);
+    XLSX.utils.book_append_sheet(wb, ws1, "Período 1");
+    
+    // Hoja 2: Período 2
+    const ws2 = XLSX.utils.json_to_sheet(data2);
+    XLSX.utils.book_append_sheet(wb, ws2, "Período 2");
+    
+    XLSX.writeFile(wb, "reporte_servicios_consegur.xlsx");
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-22 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-calendar-check"></i> Filtrado por fechas específicas</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Lunes, 22 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-calendar-check" style="font-size: 3rem; color: #805ad5;"></i>
+                            <h5 class="mt-3">Fechas Específicas</h5>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                Filtrado por fechas específicas solicitadas
+                            </div>
+                            <small class="text-muted">Incluye fines de semana según requerimiento</small>
+                        </div>
+                        <div class="code-snippet">
+function isInSpecificDateRanges(dateString) {
+    const date = new Date(dateString);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // REPORTE 1: 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17 de julio
+    const report1Dates = [
+        '2025-07-03', '2025-07-04', '2025-07-07', '2025-07-08', '2025-07-09',
+        '2025-07-10', '2025-07-11', '2025-07-14', '2025-07-15', '2025-07-16', '2025-07-17'
+    ];
+    
+    return report1Dates.includes(dateStr) || report2Dates.includes(dateStr);
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-23 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-code-square"></i> Creación de reporte de desarrollo cronológico</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Martes, 23 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-code-square" style="font-size: 3rem; color: #d69e2e;"></i>
+                            <h5 class="mt-3">Reporte de Desarrollo</h5>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                Reporte cronológico de implementaciones y mejoras
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-success">Exportar Desarrollo</button>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+// Datos de desarrollo cronológicos
+const developmentActivities = [
+    {
+        date: '2025-07-03',
+        type: 'feature',
+        title: 'Investigación del problema del modal de finalización',
+        description: 'Análisis y debug del problema con el modal de finalización de servicios',
+        evidence: 'Logs de debug agregados en script.js',
+        observations: 'Identificación de problemas en IDs de elementos y manejo de modales'
+    },
+    // ... más actividades
+];
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-24 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-file-text"></i> Documentación de código y evidencias</h4>
+                            <span class="activity-type type-improvement">Improvement</span>
+                        </div>
+                        <p class="mb-0">Miércoles, 24 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-file-text" style="font-size: 3rem; color: #3182ce;"></i>
+                            <h5 class="mt-3">Documentación Completa</h5>
+                            <div class="list-group">
+                                <div class="list-group-item">
+                                    <i class="bi bi-file-code"></i> codigo_actividades_desarrollo.md
+                                </div>
+                                <div class="list-group-item">
+                                    <i class="bi bi-file-earmark-text"></i> Evidencias de código
+                                </div>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+# Código y Evidencias de Actividades de Desarrollo
+
+## Período 1: 03/07/2025 - 17/07/2025
+### 2025-07-03 - Investigación del problema del modal de finalización
+
+**Descripción:** Análisis y debug del problema con el modal de finalización de servicios
+
+**Evidencia:** Logs de debug agregados en script.js
+
+**Código relevante:**
+```javascript
+console.log('Botón finalizar clickeado');
+console.log('Modal element:', document.getElementById('registerServiceModal'));
+```
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-25 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-gear"></i> Optimización de interfaz de reportes</h4>
+                            <span class="activity-type type-improvement">Improvement</span>
+                        </div>
+                        <p class="mb-0">Jueves, 25 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-gear" style="font-size: 3rem; color: #805ad5;"></i>
+                            <h5 class="mt-3">Interfaz Optimizada</h5>
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>Reporte de Desarrollo</h6>
+                                    <p class="text-muted">Interfaz mejorada para mejor experiencia de usuario</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+// Interfaz mejorada para reportes
+<div class="card">
+    <div class="card-header">
+        <h5><i class="bi bi-code-square"></i> Reporte de Desarrollo</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Reporte cronológico de implementaciones, modificaciones, cambios y mejoras realizadas en el proyecto.
+        </div>
+    </div>
+</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-28 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-calendar-range"></i> Sistema de filtrado por fechas específicas</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Domingo, 28 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-calendar-range" style="font-size: 3rem; color: #38a169;"></i>
+                            <h5 class="mt-3">Filtrado Avanzado</h5>
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i>
+                                Sistema de filtrado que permite incluir fechas específicas
+                            </div>
+                            <small class="text-muted">Flexibilidad en el sistema de reportes</small>
+                        </div>
+                        <div class="code-snippet">
+// Sistema de filtrado por fechas específicas
+function isInSpecificDateRanges(dateString) {
+    const date = new Date(dateString);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // REPORTE 2: 18, 21, 22, 23, 24, 25, 28, 29, 30, 31 de julio y 1 de agosto
+    const report2Dates = [
+        '2025-07-18', '2025-07-21', '2025-07-22', '2025-07-23', '2025-07-24',
+        '2025-07-25', '2025-07-28', '2025-07-29', '2025-07-30', '2025-07-31', '2025-08-01'
+    ];
+    
+    return report1Dates.includes(dateStr) || report2Dates.includes(dateStr);
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-29 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-images"></i> Preparación de imágenes de actividades</h4>
+                            <span class="activity-type type-improvement">Improvement</span>
+                        </div>
+                        <p class="mb-0">Lunes, 29 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-images" style="font-size: 3rem; color: #e53e3e;"></i>
+                            <h5 class="mt-3">Documentación Visual</h5>
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                Creación de imágenes para cada actividad de desarrollo
+                            </div>
+                            <small class="text-muted">Documentación visual completa del proyecto</small>
+                        </div>
+                        <div class="code-snippet">
+<!-- Archivo de imágenes de actividades -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Imágenes de Actividades de Desarrollo</title>
+    <!-- Bootstrap y estilos para presentación visual -->
+</head>
+<body>
+    <!-- Contenido visual de cada actividad -->
+</body>
+</html>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-30 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-check2-all"></i> Verificación final de reportes</h4>
+                            <span class="activity-type type-improvement">Improvement</span>
+                        </div>
+                        <p class="mb-0">Martes, 30 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-check2-all" style="font-size: 3rem; color: #38a169;"></i>
+                            <h5 class="mt-3">Verificación Completa</h5>
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i>
+                                Todos los reportes verificados y funcionando correctamente
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="text-center">
+                                        <i class="bi bi-file-earmark-excel text-success"></i>
+                                        <br><small>Reporte Servicios</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center">
+                                        <i class="bi bi-code-square text-info"></i>
+                                        <br><small>Reporte Desarrollo</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+// Verificación final de funcionalidad
+function verifyReports() {
+    // Verificar exportación de servicios
+    const servicesData = generateReportData('2025-07-03', '2025-07-17');
+    console.log('Servicios período 1:', servicesData.length);
+    
+    // Verificar exportación de desarrollo
+    const devData = generateDevelopmentReportData('2025-07-03', '2025-07-17');
+    console.log('Actividades desarrollo período 1:', devData.length);
+    
+    return true;
+}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-07-31 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-palette"></i> Interfaz mejorada para reportes de desarrollo</h4>
+                            <span class="activity-type type-improvement">Improvement</span>
+                        </div>
+                        <p class="mb-0">Jueves, 31 de Julio 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-palette" style="font-size: 3rem; color: #805ad5;"></i>
+                            <h5 class="mt-3">Interfaz Mejorada</h5>
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>Reporte de Desarrollo</h6>
+                                    <p class="text-muted">Interfaz mejorada para reportes de desarrollo</p>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-primary">Vista Previa</button>
+                                        <button class="btn btn-sm btn-success">Exportar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="code-snippet">
+// Interfaz mejorada para reportes de desarrollo
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5><i class="bi bi-code-square"></i> Reporte de Desarrollo</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Reporte cronológico de implementaciones, modificaciones, cambios y mejoras realizadas en el proyecto. (Fechas específicas solicitadas)
+        </div>
+        <div id="development-preview">
+            <!-- Vista previa de actividades -->
+        </div>
+    </div>
+</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2025-08-01 -->
+                <div class="activity-card">
+                    <div class="activity-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4><i class="bi bi-calendar-check"></i> Sistema de filtrado por fechas específicas</h4>
+                            <span class="activity-type type-feature">Feature</span>
+                        </div>
+                        <p class="mb-0">Viernes, 1 de Agosto 2025</p>
+                    </div>
+                    <div class="activity-content">
+                        <div class="ui-preview">
+                            <i class="bi bi-calendar-check" style="font-size: 3rem; color: #38a169;"></i>
+                            <h5 class="mt-3">Filtrado Final</h5>
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle"></i>
+                                Sistema de filtrado que permite incluir fechas específicas solicitadas por el usuario
+                            </div>
+                            <small class="text-muted">Flexibilidad en el sistema de reportes para adaptarse a requerimientos específicos</small>
+                        </div>
+                        <div class="code-snippet">
+// Sistema de filtrado por fechas específicas - Implementación final
+function isInSpecificDateRanges(dateString) {
+    const date = new Date(dateString);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // REPORTE 1: 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17 de julio
+    const report1Dates = [
+        '2025-07-03', '2025-07-04', '2025-07-07', '2025-07-08', '2025-07-09',
+        '2025-07-10', '2025-07-11', '2025-07-14', '2025-07-15', '2025-07-16', '2025-07-17'
+    ];
+    
+    // REPORTE 2: 18, 21, 22, 23, 24, 25, 28, 29, 30, 31 de julio y 1 de agosto
+    const report2Dates = [
+        '2025-07-18', '2025-07-21', '2025-07-22', '2025-07-23', '2025-07-24',
+        '2025-07-25', '2025-07-28', '2025-07-29', '2025-07-30', '2025-07-31', '2025-08-01'
+    ];
+    
+    return report1Dates.includes(dateStr) || report2Dates.includes(dateStr);
+}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

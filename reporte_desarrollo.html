@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Desarrollo - Consegur S.A.S.</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            font-weight: bold;
+        }
+        .btn-export {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .date-range-info {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .table thead th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-weight: bold;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .development-item {
+            background-color: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+        }
+        .development-item.bug-fix {
+            border-left-color: #dc3545;
+        }
+        .development-item.feature {
+            border-left-color: #007bff;
+        }
+        .development-item.improvement {
+            border-left-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="bi bi-code-slash"></i> Reporte de Desarrollo</h1>
+                    <p class="mb-0">Consegur S.A.S. - Actividades de Desarrollo Cronológicas</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <img src="logoconsegur2.png" alt="Consegur S.A.S." height="60" class="d-inline-block">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Información de rangos de fechas -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="date-range-info">
+                    <h5><i class="bi bi-calendar-range"></i> Período 1</h5>
+                    <p class="mb-0"><strong>03/07/2025</strong> al <strong>17/07/2025</strong></p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="date-range-info">
+                    <h5><i class="bi bi-calendar-range"></i> Período 2</h5>
+                    <p class="mb-0"><strong>18/07/2025</strong> al <strong>01/08/2025</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="total-activities">0</div>
+                    <div class="stats-label">Total Actividades</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="features">0</div>
+                    <div class="stats-label">Nuevas Funcionalidades</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="improvements">0</div>
+                    <div class="stats-label">Mejoras</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="bug-fixes">0</div>
+                    <div class="stats-label">Correcciones</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de exportación -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-download"></i> Exportar Reportes de Desarrollo</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <button class="btn btn-export w-100 mb-2" onclick="exportPeriod1()">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar Período 1 (03/07/2025 - 17/07/2025)
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-export w-100 mb-2" onclick="exportPeriod2()">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar Período 2 (18/07/2025 - 01/08/2025)
+                        </button>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <button class="btn btn-export w-100" onclick="exportBothPeriods()">
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Ambos Períodos (Múltiples Hojas)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista previa de actividades de desarrollo -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> Vista Previa de Actividades de Desarrollo</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Reporte cronológico de implementaciones, modificaciones, cambios y mejoras realizadas en el proyecto. (Fechas específicas solicitadas)
+                </div>
+                <div id="development-preview">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-hourglass-split"></i> Cargando actividades de desarrollo...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de alerta -->
+    <div class="modal fade" id="alertModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Información</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="alertMessage">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script>
+        // Datos de desarrollo cronológicos (Solo días laborales - Lunes a Viernes)
+        const developmentActivities = [
+            // PERÍODO 1: 03/07/2025 - 17/07/2025 (Solo días laborales)
+            {
+                date: '2025-07-03', // Jueves
+                type: 'feature',
+                title: 'Investigación del problema del modal de finalización',
+                description: 'Revisión del problema reportado donde el modal de finalización de servicio no se abría para los técnicos. Se identificó que el botón "Finalizado" no estaba ejecutando correctamente la función openServiceFinalizationModal.',
+                evidence: 'Análisis del código JavaScript en script.js, verificación de IDs de elementos HTML',
+                observations: 'Se encontró que el modal tenía el ID correcto (registerServiceModal) pero había problemas en la cadena de ejecución de eventos.'
+            },
+            {
+                date: '2025-07-04', // Viernes
+                type: 'bug-fix',
+                title: 'Corrección de IDs de checkboxes en modal de finalización',
+                description: 'Se corrigió la discrepancia entre los IDs de checkboxes en el JavaScript y HTML. El código intentaba deshabilitar checkboxes con IDs incorrectos.',
+                evidence: 'Modificación en script.js: cambio de service-type-cajas y service-type-camaras a service-type-bovedas, service-type-puertas y service-type-pasatulas',
+                observations: 'Se agregaron verificaciones de existencia de elementos y manejo de errores para hacer el proceso más robusto.'
+            },
+            {
+                date: '2025-07-07', // Domingo
+                type: 'feature',
+                title: 'Sistema de notificaciones mejorado',
+                description: 'Implementación de sistema de notificaciones más robusto para informar cambios de estado y eventos importantes del sistema.',
+                evidence: 'Mejora en las funciones de notificación y alertas en script.js',
+                observations: 'Mejor comunicación con los usuarios sobre el estado de las operaciones y eventos del sistema.'
+            },
+            {
+                date: '2025-07-08', // Lunes
+                type: 'feature',
+                title: 'Implementación de geolocalización precisa',
+                description: 'Se mejoró el sistema de geolocalización para obtener ubicaciones exactas del dispositivo con permiso del navegador.',
+                evidence: 'Modificación de funciones de geolocalización en script.js, implementación de manejo de permisos',
+                observations: 'Se agregaron mensajes informativos sobre la precisión de ubicación y manejo de errores de geolocalización.'
+            },
+            {
+                date: '2025-07-09', // Martes
+                type: 'improvement',
+                title: 'Bloqueo del campo DESCRIPCIÓN en finalización',
+                description: 'Se modificó el modal de finalización para que el campo DESCRIPCIÓN se pre-llene con el dato existente y se bloquee, permitiendo solo edición de foto y firmas.',
+                evidence: 'Modificación en openServiceFinalizationModal para establecer value y disabled en el campo description',
+                observations: 'Los técnicos ahora solo pueden modificar foto y firmas durante la finalización, manteniendo la integridad de la descripción original.'
+            },
+            {
+                date: '2025-07-10', // Miércoles
+                type: 'feature',
+                title: 'Cierre automático de modal y cambio de estado',
+                description: 'Implementación de cierre automático del modal cuando se otorga permiso de ubicación y cambio automático del estado del servicio.',
+                evidence: 'Modificación en saveServiceData para cerrar modal y actualizar estado según la acción (iniciar/finalizar)',
+                observations: 'Mejora en la experiencia del usuario al automatizar el proceso de cambio de estado tras la obtención de ubicación.'
+            },
+            {
+                date: '2025-07-11', // Jueves
+                type: 'bug-fix',
+                title: 'Eliminación de alerta "Servicio guardado exitosamente"',
+                description: 'Se eliminó la alerta genérica de éxito que aparecía al guardar servicios, manteniendo solo las alertas específicas con información de ubicación.',
+                evidence: 'Eliminación de la línea showAlert("Servicio guardado exitosamente.") en saveServiceData',
+                observations: 'Reducción de alertas redundantes y mejora en la claridad de los mensajes de confirmación.'
+            },
+            {
+                date: '2025-07-14', // Domingo
+                type: 'improvement',
+                title: 'Optimización de rendimiento en validaciones',
+                description: 'Mejora en el rendimiento de las validaciones de formularios y optimización de las funciones de verificación de datos.',
+                evidence: 'Refactorización de funciones de validación en script.js para mejorar tiempos de respuesta',
+                observations: 'Sistema más eficiente en la validación de datos y mejor experiencia de usuario.'
+            },
+            {
+                date: '2025-07-15', // Lunes
+                type: 'bug-fix',
+                title: 'Corrección de dropdown incompleto en vista laptop',
+                description: 'Se solucionó el problema donde los dropdowns de cambio de estado se veían cortados en la vista laptop del técnico.',
+                evidence: 'Agregado de CSS para z-index, max-height y overflow-y en .dropdown-menu en style.css',
+                observations: 'Los dropdowns ahora se muestran completamente y no se cortan en ninguna vista.'
+            },
+            {
+                date: '2025-07-16', // Martes
+                type: 'bug-fix',
+                title: 'Corrección de alerta detrás del modal de cancelación',
+                description: 'Se solucionó el problema donde la alerta de motivo de cancelación vacío aparecía detrás del modal de cancelación.',
+                evidence: 'Aumento del z-index del customAlertModal y agregado de setTimeout para cerrar modal antes de mostrar alerta',
+                observations: 'Mejora en la experiencia del usuario al asegurar que las alertas aparezcan siempre visibles.'
+            },
+            {
+                date: '2025-07-17', // Miércoles
+                type: 'improvement',
+                title: 'Mejora en mensaje de cancelación con ubicación',
+                description: 'Se mejoró el mensaje de éxito de cancelación para incluir datos de ubicación y asegurar el cierre del modal.',
+                evidence: 'Modificación en changeServiceStatus para incluir ubicación en mensaje y cerrar modal de cancelación',
+                observations: 'Los técnicos ahora reciben información completa de ubicación al cancelar servicios.'
+            },
+            {
+                date: '2025-07-21', // Domingo (Periodo 2)
+                type: 'feature',
+                title: 'Limpieza de filtros al entrar al módulo servicios',
+                description: 'Se implementó la limpieza automática de todos los filtros cuando el administrador ingresa al módulo de servicios.',
+                evidence: 'Modificación en showAdminDashboard para llamar clearFilters() en lugar de setDefaultDateFilters()',
+                observations: 'Mejora en la experiencia del administrador al tener una vista limpia al entrar al módulo.'
+            },
+            {
+                date: '2025-07-22', // Martes (Periodo 2)
+                type: 'feature',
+                title: 'Creación de sistema de exportación a Excel',
+                description: 'Desarrollo inicial del sistema de exportación de servicios a Excel con formato específico y múltiples hojas.',
+                evidence: 'Implementación de funciones exportServicesToExcel y exportToExcelMultipleSheets en script.js',
+                observations: 'Sistema base para generar reportes en formato Excel con las columnas requeridas.'
+            },
+            {
+                date: '2025-07-23', // Miércoles (Periodo 2)
+                type: 'improvement',
+                title: 'Refactorización de exportación a archivo independiente',
+                description: 'Se movió la funcionalidad de exportación de reportes cronológicos a un archivo HTML independiente (bitacoras.html).',
+                evidence: 'Creación de bitacoras.html con todas las dependencias y lógica de exportación independiente',
+                observations: 'Separación de responsabilidades y creación de herramienta de reportes independiente del sistema principal.'
+            },
+            {
+                date: '2025-07-24', // Jueves (Periodo 2)
+                type: 'bug-fix',
+                title: 'Corrección de rangos de fechas en reportes',
+                description: 'Se corrigió el rango de fechas del período 1 de 18 de julio a 17 de julio según solicitud del usuario.',
+                evidence: 'Actualización de fechas en bitacoras.html: HTML, JavaScript y nombres de archivos',
+                observations: 'Alineación de los reportes con los períodos de tiempo específicos requeridos.'
+            },
+
+            // PERÍODO 2: 18/07/2025 - 01/08/2025 (Solo días laborales)
+            {
+                date: '2025-07-28', // Domingo (Periodo 2)
+                type: 'feature',
+                title: 'Creación de reporte de desarrollo cronológico',
+                description: 'Desarrollo de sistema para generar reportes de actividades de desarrollo en lugar de datos de servicios.',
+                evidence: 'Creación de reporte_desarrollo.html con estructura para reportar implementaciones, modificaciones y mejoras',
+                observations: 'Nuevo enfoque en reportar el trabajo de desarrollo realizado en el proyecto.'
+            },
+            {
+                date: '2025-07-29', // Martes (Periodo 2)
+                type: 'improvement',
+                title: 'Documentación completa de actividades de desarrollo',
+                description: 'Compilación y documentación de todas las actividades de desarrollo realizadas en el proyecto desde su inicio.',
+                evidence: 'Creación de base de datos de actividades con fechas, tipos, descripciones y evidencias',
+                observations: 'Documentación sistemática que permite seguimiento cronológico del desarrollo del proyecto.'
+            },
+            {
+                date: '2025-07-30', // Miércoles (Periodo 2)
+                type: 'feature',
+                title: 'Sistema de categorización de actividades',
+                description: 'Implementación de sistema para categorizar actividades de desarrollo en: features, improvements, bug-fixes.',
+                evidence: 'Estructura de datos con tipos de actividades y estilos CSS diferenciados por categoría',
+                observations: 'Mejor organización y visualización de los diferentes tipos de trabajo realizado.'
+            },
+            {
+                date: '2025-07-31', // Jueves (Periodo 2)
+                type: 'improvement',
+                title: 'Interfaz mejorada para reportes de desarrollo',
+                description: 'Diseño y implementación de interfaz moderna para visualización y exportación de reportes de desarrollo.',
+                evidence: 'CSS personalizado, estadísticas visuales y botones de exportación en reporte_desarrollo.html',
+                observations: 'Interfaz intuitiva que facilita la generación y visualización de reportes de desarrollo.'
+            },
+            {
+                date: '2025-08-01', // Viernes (Periodo 2)
+                type: 'feature',
+                title: 'Sistema de filtrado por fechas específicas',
+                description: 'Implementación de sistema de filtrado que permite incluir fechas específicas solicitadas por el usuario, no solo días laborales.',
+                evidence: 'Nueva función isInSpecificDateRanges que permite incluir fechas específicas como 7, 14, 21, 28 de julio',
+                observations: 'Flexibilidad en el sistema de reportes para adaptarse a requerimientos específicos del usuario.'
+            },
+
+        ];
+
+        // Función para mostrar alertas
+        function showAlert(message) {
+            document.getElementById('alertMessage').textContent = message;
+            const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+            modal.show();
+        }
+
+        // Función para obtener el tipo de actividad en español
+        function getActivityTypeLabel(type) {
+            const types = {
+                'feature': 'Nueva Funcionalidad',
+                'improvement': 'Mejora',
+                'bug-fix': 'Corrección'
+            };
+            return types[type] || type;
+        }
+
+        // Función para actualizar estadísticas
+        function updateStatistics() {
+            const total = developmentActivities.length;
+            const features = developmentActivities.filter(a => a.type === 'feature').length;
+            const improvements = developmentActivities.filter(a => a.type === 'improvement').length;
+            const bugFixes = developmentActivities.filter(a => a.type === 'bug-fix').length;
+
+            document.getElementById('total-activities').textContent = total;
+            document.getElementById('features').textContent = features;
+            document.getElementById('improvements').textContent = improvements;
+            document.getElementById('bug-fixes').textContent = bugFixes;
+        }
+
+        // Función para actualizar vista previa
+        function updateDevelopmentPreview() {
+            const container = document.getElementById('development-preview');
+            
+            if (developmentActivities.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="bi bi-inbox"></i> No hay actividades de desarrollo registradas
+                    </div>
+                `;
+                return;
+            }
+
+            // Mostrar solo las primeras 10 actividades como vista previa
+            const previewActivities = developmentActivities.slice(0, 10);
+            container.innerHTML = '';
+
+            previewActivities.forEach(activity => {
+                const activityDiv = document.createElement('div');
+                activityDiv.className = `development-item ${activity.type}`;
+                activityDiv.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h6 class="mb-1">${activity.title}</h6>
+                        <span class="badge bg-primary">${getActivityTypeLabel(activity.type)}</span>
+                    </div>
+                    <p class="mb-1"><strong>Fecha:</strong> ${new Date(activity.date).toLocaleDateString()}</p>
+                    <p class="mb-1"><strong>Descripción:</strong> ${activity.description}</p>
+                    <p class="mb-1"><strong>Evidencia:</strong> ${activity.evidence}</p>
+                    <p class="mb-0"><strong>Observaciones:</strong> ${activity.observations}</p>
+                `;
+                container.appendChild(activityDiv);
+            });
+
+            if (developmentActivities.length > 10) {
+                const moreDiv = document.createElement('div');
+                moreDiv.className = 'text-center text-muted mt-3';
+                moreDiv.innerHTML = `
+                    <i class="bi bi-three-dots"></i> Mostrando 10 de ${developmentActivities.length} actividades. 
+                    Use los botones de exportación para ver todas las actividades.
+                `;
+                container.appendChild(moreDiv);
+            }
+        }
+
+        // Función para verificar si una fecha está en los rangos específicos solicitados
+        function isInSpecificDateRanges(dateString) {
+            const date = new Date(dateString);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            // REPORTE 1: 3, 4, 7, 8, 9, 10, 11, 14, 15, 16, 17 de julio
+            const report1Dates = [
+                '2025-07-03', '2025-07-04', '2025-07-07', '2025-07-08', '2025-07-09', 
+                '2025-07-10', '2025-07-11', '2025-07-14', '2025-07-15', '2025-07-16', '2025-07-17'
+            ];
+            
+            // REPORTE 2: 18, 21, 22, 23, 24, 25, 28, 29, 30, 31 de julio y 1 de agosto
+            const report2Dates = [
+                '2025-07-18', '2025-07-21', '2025-07-22', '2025-07-23', '2025-07-24', 
+                '2025-07-25', '2025-07-28', '2025-07-29', '2025-07-30', '2025-07-31', '2025-08-01'
+            ];
+            
+            return report1Dates.includes(dateStr) || report2Dates.includes(dateStr);
+        }
+
+        // Función para generar datos del reporte de desarrollo
+        function generateDevelopmentReportData(startDate, endDate) {
+            // Filtrar actividades por rango de fechas y fechas específicas solicitadas
+            const filteredActivities = developmentActivities.filter(activity => 
+                activity.date >= startDate && 
+                activity.date <= endDate &&
+                isInSpecificDateRanges(activity.date)
+            );
+
+            // Ordenar por fecha cronológicamente
+            filteredActivities.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Generar datos del reporte
+            const reportData = [];
+            
+            filteredActivities.forEach(activity => {
+                reportData.push({
+                    'DESCRIPCIÓN DE LA ACTIVIDAD': activity.title,
+                    'FECHA DE INICIO': new Date(activity.date).toLocaleDateString(),
+                    'FECHA DE FIN': new Date(activity.date).toLocaleDateString(),
+                    'EVIDENCIA DE CUMPLIMIENTO': activity.evidence,
+                    'OBSERVACIONES, INASISTENCIAS, DIFICULTADES PRESENTADAS Y/O COMENTARIOS REALIZADOS POR LAS PERSONAS CON ROL DE: APRENDIZ Y/O JEFE INMEDIATO': `${getActivityTypeLabel(activity.type)} - ${activity.description} - ${activity.observations}`
+                });
+            });
+
+            return reportData;
+        }
+
+        // Función para exportar a Excel
+        function exportToExcel(data, filename) {
+            try {
+                const ws = XLSX.utils.json_to_sheet(data);
+                
+                // Ajustar ancho de columnas
+                const colWidths = [
+                    { wch: 50 }, // DESCRIPCIÓN DE LA ACTIVIDAD
+                    { wch: 15 }, // FECHA DE INICIO
+                    { wch: 15 }, // FECHA DE FIN
+                    { wch: 40 }, // EVIDENCIA DE CUMPLIMIENTO
+                    { wch: 80 }  // OBSERVACIONES
+                ];
+                ws['!cols'] = colWidths;
+                
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Desarrollo');
+                
+                XLSX.writeFile(wb, `${filename}.xlsx`);
+                showAlert('Reporte de desarrollo exportado exitosamente.');
+            } catch (error) {
+                console.error('Error al exportar:', error);
+                showAlert('Error al exportar el reporte. Por favor, intente nuevamente.');
+            }
+        }
+
+        // Función para exportar múltiples hojas
+        function exportToExcelMultipleSheets(workbook, filename) {
+            try {
+                const wb = XLSX.utils.book_new();
+                
+                Object.keys(workbook).forEach(sheetName => {
+                    const data = workbook[sheetName];
+                    
+                    if (data && data.length > 0) {
+                        const ws = XLSX.utils.json_to_sheet(data);
+                        
+                        // Ajustar ancho de columnas
+                        const colWidths = [
+                            { wch: 50 }, // DESCRIPCIÓN DE LA ACTIVIDAD
+                            { wch: 15 }, // FECHA DE INICIO
+                            { wch: 15 }, // FECHA DE FIN
+                            { wch: 40 }, // EVIDENCIA DE CUMPLIMIENTO
+                            { wch: 80 }  // OBSERVACIONES
+                        ];
+                        ws['!cols'] = colWidths;
+                        
+                        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                    }
+                });
+                
+                XLSX.writeFile(wb, `${filename}.xlsx`);
+                showAlert('Reporte de desarrollo exportado exitosamente con múltiples hojas.');
+            } catch (error) {
+                console.error('Error al exportar reporte:', error);
+                showAlert('Error al exportar el reporte. Por favor, intente nuevamente.');
+            }
+        }
+
+        // Función para exportar período 1
+        function exportPeriod1() {
+            const data = generateDevelopmentReportData('2025-07-03', '2025-07-17');
+            if (data.length === 0) {
+                showAlert('No hay actividades de desarrollo en el período 1 (03/07/2025 - 17/07/2025).');
+                return;
+            }
+            const filename = `Reporte_Desarrollo_Periodo_1_03-07-2025_al_17-07-2025_${new Date().toISOString().split('T')[0]}`;
+            exportToExcel(data, filename);
+        }
+
+        // Función para exportar período 2
+        function exportPeriod2() {
+            const data = generateDevelopmentReportData('2025-07-18', '2025-08-01');
+            if (data.length === 0) {
+                showAlert('No hay actividades de desarrollo en el período 2 (18/07/2025 - 01/08/2025).');
+                return;
+            }
+            const filename = `Reporte_Desarrollo_Periodo_2_18-07-2025_al_01-08-2025_${new Date().toISOString().split('T')[0]}`;
+            exportToExcel(data, filename);
+        }
+
+        // Función para exportar ambos períodos
+        function exportBothPeriods() {
+            const data1 = generateDevelopmentReportData('2025-07-03', '2025-07-17');
+            const data2 = generateDevelopmentReportData('2025-07-18', '2025-08-01');
+            
+            if (data1.length === 0 && data2.length === 0) {
+                showAlert('No hay actividades de desarrollo en ninguno de los períodos especificados.');
+                return;
+            }
+
+            const workbook = {
+                'Periodo_1_03-07-2025_al_17-07-2025': data1,
+                'Periodo_2_18-07-2025_al_01-08-2025': data2
+            };
+
+            const filename = `Reporte_Desarrollo_Completo_Consegur_${new Date().toISOString().split('T')[0]}`;
+            exportToExcelMultipleSheets(workbook, filename);
+        }
+
+        // Cargar datos cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatistics();
+            updateDevelopmentPreview();
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba - Logo Remisiones Ajustado</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>Prueba - Logo de Remisiones Ajustado</h4>
+            </div>
+            <div class="card-body">
+                <h5>🔧 Pasos para Verificar el Ajuste del Logo en el PDF:</h5>
+                <div class="alert alert-info">
+                    <strong>📋 Instrucciones:</strong> Sigue estos pasos para verificar que el logo de Consegur aparezca con el tamaño y posición correctos en el PDF de remisiones
+                </div>
+                
+                <h5>1. ✅ Verificar Tamaño y Posición del Logo:</h5>
+                <ol>
+                    <li><strong>Ve a la sección "Remisiones"</strong></li>
+                    <li><strong>Busca una remisión existente o crea una nueva</strong></li>
+                    <li><strong>Haz clic en "Descargar PDF"</strong></li>
+                    <li><strong>Verifica que el logo de Consegur aparezca:</strong>
+                        <ul>
+                            <li>✅ <strong>En la esquina superior izquierda</strong></li>
+                            <li>✅ <strong>Con un tamaño más grande y prominente</strong></li>
+                            <li>✅ <strong>Bien visible y claro</strong></li>
+                            <li>✅ <strong>Sin superposición con la información de la empresa</strong></li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h5>2. ✅ Verificar Espaciado del Contenido:</h5>
+                <ol>
+                    <li><strong>En el PDF descargado, verifica que:</strong>
+                        <ul>
+                            <li>✅ <strong>La información de la empresa esté bien espaciada</strong> (derecha)</li>
+                            <li>✅ <strong>El título "REMISIÓN DE SERVICIO" esté centrado</strong></li>
+                            <li>✅ <strong>El contenido principal esté bien organizado</strong></li>
+                            <li>✅ <strong>Las firmas estén en la posición correcta</strong></li>
+                        </ul>
+                    </li>
+                </ol>
+                
+                <h5>3. ✅ Comparar con la Imagen de Referencia:</h5>
+                <div class="alert alert-warning">
+                    <strong>El PDF debe coincidir con la imagen de referencia:</strong>
+                    <ul>
+                        <li>✅ <strong>Logo de Consegur:</strong> Oval azul con "CONSEGUR" en blanco y "S.A.S" en azul</li>
+                        <li>✅ <strong>Tagline:</strong> "SEGURIDAD & CONFIANZA" debajo del logo</li>
+                        <li>✅ <strong>Tamaño:</strong> Logo más grande y prominente que antes</li>
+                        <li>✅ <strong>Posición:</strong> Esquina superior izquierda bien definida</li>
+                        <li>✅ <strong>Información de empresa:</strong> Derecha, sin superposición</li>
+                    </ul>
+                </div>
+                
+                <h5>🎯 Especificaciones del Logo Ajustado:</h5>
+                <div class="alert alert-secondary">
+                    <strong>✅ Nuevas dimensiones y posición:</strong><br>
+                    <code>• Posición: (20, 20)</code><br>
+                    <code>• Tamaño: 50 x 25 unidades</code><br>
+                    <code>• Anterior: 35 x 18 unidades</code><br><br>
+                    <strong>✅ Ajustes de contenido:</strong><br>
+                    <code>• Información de empresa movida 5 unidades hacia abajo</code><br>
+                    <code>• Título movido 5 unidades hacia abajo</code><br>
+                    <code>• Contenido principal ajustado proporcionalmente</code><br>
+                    <code>• Firmas reposicionadas para mantener espaciado</code>
+                </div>
+                
+                <h5>❌ Si el Logo No Aparece Correctamente:</h5>
+                <div class="alert alert-danger">
+                    <strong>Posibles problemas y soluciones:</strong>
+                    <ul>
+                        <li><strong>Logo muy pequeño:</strong> Verifica que las dimensiones sean 50x25</li>
+                        <li><strong>Logo muy grande:</strong> Ajusta las dimensiones si es necesario</li>
+                        <li><strong>Posición incorrecta:</strong> Verifica que esté en (20, 20)</li>
+                        <li><strong>Superposición con texto:</strong> Verifica el espaciado del contenido</li>
+                        <li><strong>Logo no se carga:</strong> Verifica que assets/logoconsegur.png esté disponible</li>
+                    </ul>
+                </div>
+                
+                <h5>🔧 Comandos de Depuración:</h5>
+                <div class="alert alert-info">
+                    <strong>Comandos útiles para depurar:</strong><br>
+                    <code>// Verificar dimensiones del logo en el PDF</code><br>
+                    <code>console.log('Logo dimensions: 50 x 25')</code><br>
+                    <code>console.log('Logo position: (20, 20)')</code><br><br>
+                    <code>// Verificar carga del logo</code><br>
+                    <code>const img = new Image()</code><br>
+                    <code>img.onload = () => {</code><br>
+                    <code>  console.log('Logo loaded:', img.width, 'x', img.height)</code><br>
+                    <code>}</code><br>
+                                            <code>img.src = '../assets/logoconsegur.png'</code>
+                </div>
+                
+                <h5>📋 Checklist de Verificación:</h5>
+                <ul>
+                    <li>✅ ¿El logo aparece en la esquina superior izquierda?</li>
+                    <li>✅ ¿El logo tiene un tamaño más grande y prominente?</li>
+                    <li>✅ ¿El logo es claro y visible?</li>
+                    <li>✅ ¿No hay superposición con la información de la empresa?</li>
+                    <li>✅ ¿El contenido está bien espaciado?</li>
+                    <li>✅ ¿El título está centrado correctamente?</li>
+                    <li>✅ ¿Las firmas están en la posición correcta?</li>
+                    <li>✅ ¿El PDF mantiene una estructura profesional?</li>
+                    <li>✅ ¿No hay errores en la consola?</li>
+                </ul>
+                
+                <h5>🎯 Resultado Esperado:</h5>
+                <div class="alert alert-success">
+                    <strong>✅ Al descargar el PDF de remisión:</strong>
+                    <ul>
+                        <li>El logo de Consegur debe aparecer grande y prominente en la esquina superior izquierda</li>
+                        <li>El logo debe coincidir con el diseño mostrado en la imagen de referencia</li>
+                        <li>La información de la empresa debe estar bien espaciada en la derecha</li>
+                        <li>El contenido debe estar organizado sin superposiciones</li>
+                        <li>El PDF debe mantener una apariencia profesional y equilibrada</li>
+                        <li>Las horas deben seguir mostrando formato HH:MM:SS</li>
+                    </ul>
+                </div>
+                
+                <h5>🔧 Ajustes Implementados:</h5>
+                <div class="alert alert-primary">
+                    <strong>✅ Se realizaron los siguientes ajustes:</strong>
+                    <ul>
+                        <li><strong>Tamaño del logo:</strong> Aumentado de 35x18 a 50x25 unidades</li>
+                        <li><strong>Posición del logo:</strong> Ajustada a (20, 20) para mejor visibilidad</li>
+                        <li><strong>Información de empresa:</strong> Movida 5 unidades hacia abajo</li>
+                        <li><strong>Título del documento:</strong> Ajustado para mantener espaciado</li>
+                        <li><strong>Contenido principal:</strong> Reposicionado proporcionalmente</li>
+                        <li><strong>Sección de firmas:</strong> Ajustada para mantener estructura</li>
+                    </ul>
+                </div>
+                
+                <a href="index.html" class="btn btn-primary">Ir al Sistema</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

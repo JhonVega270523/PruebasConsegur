@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Logo en PDF de Remisiones</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .logo-preview {
+            max-width: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="text-center mb-4">Test - Logo en PDF de Remisiones</h1>
+        
+        <div class="test-section">
+            <h3>1. Verificación del Logo Local</h3>
+                <p>Verificando que el archivo <code>../assets/logoconsegur.png</code> existe y se puede cargar:</p>
+            <div id="logo-preview-container">
+                <p>Cargando logo...</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Generar PDF de Prueba</h3>
+            <p>Generar un PDF de remisión con el logo de Consegur:</p>
+            <button class="btn btn-primary" onclick="generateTestPDF()">Generar PDF de Prueba</button>
+            <div id="pdf-result" class="mt-3"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Información del Test</h3>
+            <ul>
+                <li><strong>Archivo de logo:</strong> <code>assets/logoconsegur.png</code></li>
+                <li><strong>Función modificada:</strong> <code>downloadRemisionPDF()</code> en <code>js/script.js</code></li>
+                <li><strong>Cambios realizados:</strong> URL del logo cambiada de externa a local</li>
+                <li><strong>Posición en PDF:</strong> Esquina superior izquierda (20mm, 15mm)</li>
+                <li><strong>Tamaño máximo:</strong> 60mm x 30mm (proporcional)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        // Verificar que el logo se puede cargar
+        window.onload = function() {
+            const logoImg = new Image();
+            logoImg.onload = function() {
+                document.getElementById('logo-preview-container').innerHTML = `
+                    <div class="logo-preview">
+                        <img src="../assets/logoconsegur.png" alt="Logo Consegur" style="max-width: 100%;">
+                        <p class="mt-2 mb-0"><strong>✅ Logo cargado correctamente</strong></p>
+                        <p class="text-muted mb-0">Dimensiones: ${this.width} x ${this.height} px</p>
+                    </div>
+                `;
+            };
+            logoImg.onerror = function() {
+                document.getElementById('logo-preview-container').innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>❌ Error:</strong> No se pudo cargar el logo desde assets/logoconsegur.png
+                    </div>
+                `;
+            };
+            logoImg.src = '../assets/logoconsegur.png';
+        };
+
+        // Función para generar PDF de prueba
+        function generateTestPDF() {
+            const resultDiv = document.getElementById('pdf-result');
+            resultDiv.innerHTML = '<p>Generando PDF...</p>';
+
+            try {
+                // Crear datos de remisión de prueba
+                const testRemision = {
+                    id: 'TEST-001',
+                    fecha: new Date().toLocaleDateString('es-ES'),
+                    codigoServicio: 'CS-001',
+                    tipoServicio: 'Bovedas y cajas fuertes de seguridad',
+                    descripcion: 'Servicio de prueba para verificar el logo en el PDF',
+                    precio: 150000,
+                    cliente: 'Cliente de Prueba',
+                    telefonoCliente: '3001234567',
+                    horaInicio: '08:00',
+                    horaFinalizacion: '12:00',
+                    ubicacion: 'Calle 123 #4-56, Medellín, Antioquia',
+                    firmaTecnico: null,
+                    firmaCliente: null
+                };
+
+                // Crear el PDF usando jsPDF
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Configurar fuente y tamaño
+                doc.setFont('helvetica');
+                
+                // Función para cargar el logo local
+                function loadLogoAndGeneratePDF() {
+                    console.log('🖼️ Iniciando carga del logo para PDF...');
+                    
+                    // URL del logo local de Consegur
+                    const logoUrl = '../assets/logoconsegur.png';
+                    
+                    // Método principal: carga directa con Image + Canvas
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    
+                    img.onload = () => {
+                        try {
+                            console.log('✅ Logo local cargado correctamente:', {
+                                width: img.width,
+                                height: img.height,
+                                naturalWidth: img.naturalWidth,
+                                naturalHeight: img.naturalHeight,
+                                url: logoUrl
+                            });
+                            
+                            // Crear canvas para convertir a base64
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                            
+                            const logoBase64 = canvas.toDataURL('image/png');
+                            console.log('✅ Base64 generado del logo local:', logoBase64.substring(0, 50) + '...');
+                            
+                            // Calcular dimensiones optimizadas para el PDF
+                            const maxWidth = 60; // Ancho máximo en mm
+                            const maxHeight = 30; // Alto máximo en mm
+                            
+                            let logoWidth = maxWidth;
+                            let logoHeight = (img.height * logoWidth) / img.width;
+                            
+                            // Si la altura es muy grande, ajustar proporcionalmente
+                            if (logoHeight > maxHeight) {
+                                logoHeight = maxHeight;
+                                logoWidth = (img.width * logoHeight) / img.height;
+                            }
+                            
+                            // Posición en la parte superior izquierda
+                            const logoX = 20;
+                            const logoY = 15;
+                            
+                            doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
+                            console.log('✅ Logo local agregado exitosamente al PDF:', {
+                                position: { x: logoX, y: logoY },
+                                size: { width: logoWidth, height: logoHeight },
+                                originalSize: { width: img.width, height: img.height }
+                            });
+                            
+                            // Continuar con el resto del PDF
+                            generatePDFContent(doc, testRemision);
+                        } catch (e) {
+                            console.error('❌ Error al procesar logo local:', e);
+                            generatePDFContent(doc, testRemision);
+                        }
+                    };
+                    
+                    img.onerror = () => {
+                        console.error('❌ Error al cargar logo local');
+                        console.log('⚠️ Continuando sin logo...');
+                        generatePDFContent(doc, testRemision);
+                    };
+                    
+                    // Intentar cargar la imagen desde la URL local
+                    img.src = logoUrl;
+                }
+                
+                // Función para generar el contenido del PDF
+                function generatePDFContent(doc, remision) {
+                    // Información de la empresa en la parte superior derecha
+                    doc.setFontSize(12);
+                    doc.text('CONSEGUR S.A.S.', 150, 30);
+                    doc.setFontSize(8);
+                    doc.text('NIT: 900514502-7', 150, 36);
+                    doc.text('IVA RÉGIMEN COMÚN', 150, 42);
+                    doc.text('CLL 7 # 50-71', 150, 48);
+                    doc.text('TELÉFONO 448 86 00', 150, 54);
+                    doc.text('MEDELLÍN ANTIOQUIA', 150, 60);
+                    
+                    // Título del documento centrado
+                    doc.setFontSize(16);
+                    doc.text('REMISIÓN DE SERVICIO', 105, 80, { align: 'center' });
+                    
+                    // Línea separadora
+                    doc.line(20, 85, 190, 85);
+                    
+                    // Información de la remisión organizada en dos columnas
+                    doc.setFontSize(10);
+                    
+                    // Columna izquierda
+                    doc.text('ID Remisión:', 20, 100);
+                    doc.text(remision.id, 50, 100);
+                    
+                    doc.text('Fecha:', 20, 110);
+                    doc.text(remision.fecha, 50, 110);
+                    
+                    doc.text('Código Servicio:', 20, 120);
+                    doc.text(remision.codigoServicio, 50, 120);
+                    
+                    doc.text('Tipo Servicio:', 20, 130);
+                    doc.text(remision.tipoServicio, 50, 130);
+                    
+                    doc.text('Descripción:', 20, 140);
+                    // Dividir descripción en múltiples líneas si es muy larga
+                    const descLines = doc.splitTextToSize(remision.descripcion, 60);
+                    doc.text(descLines, 50, 140);
+                    
+                    doc.text('Precio:', 20, 160);
+                    doc.text(`$${remision.precio.toLocaleString()}`, 50, 160);
+                    
+                    // Columna derecha
+                    doc.text('Cliente:', 120, 100);
+                    doc.text(remision.cliente, 150, 100);
+                    
+                    doc.text('Teléfono:', 120, 110);
+                    doc.text(remision.telefonoCliente, 150, 110);
+                    
+                    doc.text('Hora Inicio:', 120, 120);
+                    doc.text(remision.horaInicio, 150, 120);
+                    
+                    doc.text('Hora Finalización:', 120, 130);
+                    doc.text(remision.horaFinalizacion, 150, 130);
+                    
+                    doc.text('Ubicación:', 120, 140);
+                    const ubicLines = doc.splitTextToSize(remision.ubicacion, 60);
+                    doc.text(ubicLines, 150, 140);
+                    
+                    // Línea separadora antes de las firmas
+                    doc.line(20, 180, 190, 180);
+                    
+                    // Sección de firmas
+                    doc.setFontSize(12);
+                    doc.text('FIRMAS:', 20, 195);
+                    
+                    // Firma del técnico
+                    doc.setFontSize(10);
+                    doc.text('Firma Técnico:', 20, 210);
+                    doc.rect(20, 215, 70, 25); // Marco para firma
+                    
+                    // Firma del cliente
+                    doc.text('Firma Cliente:', 120, 210);
+                    doc.rect(120, 215, 70, 25); // Marco para firma
+                    
+                    // Información adicional en la parte inferior
+                    doc.setFontSize(8);
+                    doc.text('Este documento es una remisión oficial de CONSEGUR S.A.S.', 105, 250, { align: 'center' });
+                    doc.text('Para cualquier consulta comunicarse al teléfono 448 86 00', 105, 255, { align: 'center' });
+                    
+                    // Guardar el PDF
+                    doc.save(`test_remision_${remision.id}.pdf`);
+                    
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>✅ PDF generado exitosamente</strong><br>
+                            Archivo: <code>test_remision_${remision.id}.pdf</code><br>
+                            El logo de Consegur debería aparecer en la esquina superior izquierda del PDF.
+                        </div>
+                    `;
+                }
+                
+                // Iniciar la generación del PDF
+                loadLogoAndGeneratePDF();
+                
+            } catch (error) {
+                console.error('Error al generar PDF:', error);
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>❌ Error al generar PDF:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
