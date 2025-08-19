@@ -669,7 +669,13 @@ function saveUsers() {
 }
 
 function saveServices() {
-    localStorage.setItem('services', JSON.stringify(services));
+    try {
+        localStorage.setItem('services', JSON.stringify(services));
+        console.log('✅ Servicios guardados exitosamente en localStorage');
+    } catch (error) {
+        console.error('❌ Error al guardar servicios:', error);
+        throw new Error('Error al guardar los servicios. Por favor, intente nuevamente.');
+    }
 }
 
 function saveReports() {
@@ -839,6 +845,9 @@ function showAdminDashboard() {
         populateTechnicianDropdowns();
         renderAssignedServicesList(1);
         renderReportsList(1);
+        
+        // Forzar actualización de notificaciones
+        console.log('🔄 Cargando notificaciones de administrador...');
         renderAdminNotifications(1);
         updateNotificationBadges(); // Update badges for admin
         
@@ -1149,9 +1158,7 @@ function deleteUser(id) {
         renderAdminServicesList(services, 1);
         renderAssignedServicesList(1);
         renderEmployeeAssignedServices(1); // Refresh for other employees
-            // Cerrar confirmación si está abierta (sin mostrar alerta de éxito)
-            const confirmModal = bootstrap.Modal.getInstance(document.getElementById('customConfirmModal'));
-            if (confirmModal) confirmModal.hide();
+            //showAlert('Usuario eliminado exitosamente.');
         }
     });
 }
@@ -1171,6 +1178,57 @@ function populateTechnicianDropdowns() {
     });
 }
 
+// Función para limpiar completamente el formulario de servicios
+function clearServiceForm() {
+    console.log('🧹 Limpiando formulario de servicios...');
+    
+    // Limpiar todos los campos del formulario
+    const form = document.getElementById('service-form');
+    if (form) {
+        form.reset();
+    }
+    
+    // Limpiar campos específicos
+    const fields = [
+        'service-date',
+        'service-code',
+        'service-type',
+        'service-description',
+        'service-location',
+        'service-client-name',
+        'service-client-phone',
+        'service-status',
+        'edit-service-id',
+        'service-photo'
+    ];
+    
+    fields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            if (field.tagName === 'SELECT') {
+                field.value = '';
+                field.disabled = false;
+                field.style.backgroundColor = '';
+            } else {
+                field.value = '';
+            }
+        }
+    });
+    
+    // Limpiar firmas
+    clearSignaturePad('client');
+    clearSignaturePad('technician');
+    
+    // Limpiar foto
+    const photoPreview = document.getElementById('service-photo-preview');
+    if (photoPreview) {
+        photoPreview.classList.add('d-none');
+        photoPreview.src = '';
+    }
+    
+    console.log('✅ Formulario de servicios limpiado completamente');
+}
+
 // Función para cargar los códigos de servicio en el dropdown
 function populateServiceCodes() {
     console.log('=== populateServiceCodes llamado ===');
@@ -1178,6 +1236,10 @@ function populateServiceCodes() {
     
     const serviceCodeSelect = document.getElementById('service-code');
     if (serviceCodeSelect) {
+        // Asegurar que el dropdown esté habilitado
+        serviceCodeSelect.disabled = false;
+        serviceCodeSelect.style.backgroundColor = '';
+        
         serviceCodeSelect.innerHTML = '<option value="">Seleccionar código de servicio...</option>';
         costoServicios.forEach(servicio => {
             const option = document.createElement('option');
@@ -1308,20 +1370,12 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
     } else {
         paginatedServices.forEach(service => {
             const canEdit = !['Finalizado', 'Cancelado'].includes(service.status);
-            const isAdmin = currentUser && currentUser.role === 'admin';
-            const canDelete = isAdmin || canEdit;
-            const hasRemision = remisiones && remisiones.some(r => r.serviceId === service.id);
-            const canGenerateRemision = service.status === 'Finalizado' && !hasRemision;
-
             const editButton = canEdit ?
                 `<button class="btn btn-warning btn-sm" onclick="editService('${service.id}')">Editar</button>` :
                 `<button class="btn btn-warning btn-sm" disabled title="No se puede editar servicio finalizado/cancelado">Editar</button>`;
-            const deleteButton = canDelete ?
+            const deleteButton = canEdit ?
                 `<button class="btn btn-danger btn-sm" onclick="deleteService('${service.id}')">Eliminar</button>` :
                 `<button class="btn btn-danger btn-sm" disabled title="No se puede eliminar servicio finalizado/cancelado">Eliminar</button>`;
-            const remisionButton = canGenerateRemision ?
-                `<button class="btn btn-success btn-sm" data-service-id="${service.id}" onclick="createRemisionFromService('${service.id}')">Remisión</button>` :
-                (service.status === 'Finalizado' && hasRemision ? `<button class="btn btn-outline-secondary btn-sm" disabled title="Ya tiene remisión">Remisión</button>` : '');
 
             // Generar fila de tabla (vista desktop)
             const row = document.createElement('tr');
@@ -1350,7 +1404,6 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
                 <td>
                     <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')">Ver</button>
                     ${editButton}
-                    ${remisionButton}
                     ${deleteButton}
                 </td>
             `;
@@ -1407,7 +1460,6 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
                 <div class="service-card-actions">
                     <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')">Ver</button>
                     ${editButton}
-                    ${remisionButton}
                     ${deleteButton}
                 </div>
             `;
@@ -1553,6 +1605,8 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
     console.log('clientName:', clientName);
     console.log('clientPhone:', clientPhone);
     console.log('status:', status);
+    console.log('currentUser.role:', currentUser?.role);
+    console.log('photoData length:', photoData ? photoData.length : 0);
     console.log('==============================');
     let clientSignatureData = '';
     let technicianSignatureData = '';
@@ -1655,20 +1709,11 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
                         context: locationData.context
                     };
                     // Proceder a guardar una vez obtenida la ubicación
-                    // Cerrar el modal de "Obteniendo ubicación" antes de continuar
-                    setTimeout(() => {
-                        const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                        if (currentModal) currentModal.hide();
-                    }, 50);
                     finalizeServiceSave();
                 },
                 (error) => {
                     // Error: mostrar mensaje específico
                     console.error('Error de geolocalización para finalización:', error);
-                    setTimeout(() => {
-                        const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                        if (currentModal) currentModal.hide();
-                    }, 50);
                     showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
                 },
                 'finalizacion_servicio'
@@ -1743,15 +1788,35 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
         } else {
             services.push(newService);
         }
-        saveServices();
+        
+        
+        
+                // Intentar guardar el servicio
+        try {
+            saveServices();
+            console.log('✅ Servicio guardado exitosamente');
+        } catch (error) {
+            console.error('❌ Error al guardar servicio:', error);
+            showAlert('❌ Error al guardar el servicio. Por favor, intente nuevamente.');
+            return;
+        }
+        
         renderAdminServicesList(services, 1);
         populateAssignServiceDropdown();
         
-        // Cerrar el modal después de guardar exitosamente
-        const modal = bootstrap.Modal.getInstance(document.getElementById('registerServiceModal'));
-        if (modal) {
-            modal.hide();
+        // Enviar notificación si el servicio se finalizó
+        if (status === 'Finalizado' && currentUser.role === 'employee') {
+            const notificationMessage = `El servicio ID: ${finalId} ha sido finalizado por el técnico ${currentUser.username}. Cliente: ${clientName}, Ubicación: ${location}`;
+            console.log(`📨 Enviando notificación de finalización: ${notificationMessage}`);
+            console.log(`👤 Técnico: ${currentUser.username}`);
+            console.log(`🆔 ID del servicio: ${finalId}`);
+            sendNotification('admin', notificationMessage);
+        } else {
+            console.log(`ℹ️ No se envía notificación - Status: ${status}, Role: ${currentUser?.role}`);
         }
+        
+        // Cerrar el modal después de guardar exitosamente de manera robusta
+        closeModalSafely('registerServiceModal');
         
         document.getElementById('service-form').reset();
         clearSignaturePad('client');
@@ -1759,9 +1824,19 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
         document.getElementById('service-photo-preview').classList.add('d-none');
         document.getElementById('edit-service-id').value = '';
         document.getElementById('service-photo').value = '';
+        
+        // Limpiar explícitamente el campo de código de servicio
+        const serviceCodeSelect = document.getElementById('service-code');
+        if (serviceCodeSelect) {
+            serviceCodeSelect.value = '';
+            // Asegurar que el dropdown esté habilitado
+            serviceCodeSelect.disabled = false;
+            serviceCodeSelect.style.backgroundColor = '';
+        }
 
         if (currentUser.role === 'employee') {
             renderEmployeeAssignedServices(1);
+            updateEmployeeFilterCounts(); // Actualizar contadores de filtros
         }
         
         // Mostrar mensaje de éxito apropiado según el estado (solo para técnicos)
@@ -1890,9 +1965,7 @@ function deleteService(id) {
         if (result) {
             const serviceToDelete = services.find(s => s.id === id);
 
-            // Permitir eliminación para administradores, bloquear para otros si finalizado/cancelado
-            const isAdmin = currentUser && currentUser.role === 'admin';
-            if (!isAdmin && serviceToDelete && ['Finalizado', 'Cancelado'].includes(serviceToDelete.status)) {
+            if (serviceToDelete && ['Finalizado', 'Cancelado'].includes(serviceToDelete.status)) {
                 showAlert('No se puede eliminar un servicio finalizado o cancelado.');
                 return;
             }
@@ -2009,12 +2082,57 @@ function assignServiceToTechnician() {
             return;
         }
 
-        services[serviceIndex].technicianId = technicianId;
-        services[serviceIndex].status = 'Pendiente';
+        const service = services[serviceIndex];
+        const previousTechnicianId = service.technicianId;
+        
+        // Guardar información de asignación anterior para detectar reasignaciones
+        if (!service.assignmentHistory) {
+            service.assignmentHistory = [];
+        }
+        
+        // Verificar si es una reasignación al mismo técnico
+        const isReassignment = service.assignmentHistory.some(entry => 
+            entry.technicianId === technicianId && entry.action === 'assigned'
+        ) && service.assignmentHistory.some(entry => 
+            entry.technicianId === technicianId && entry.action === 'unassigned'
+        );
+        
+        // Si ya tenía un técnico asignado y es diferente, agregar desasignación a la historia
+        if (previousTechnicianId && previousTechnicianId !== technicianId) {
+            service.assignmentHistory.push({
+                technicianId: previousTechnicianId,
+                assignedAt: new Date().toISOString(),
+                action: 'unassigned'
+            });
+        }
+        
+        // Actualizar el servicio
+        service.technicianId = technicianId;
+        service.status = 'Pendiente';
+        
+        // Agregar la nueva asignación a la historia
+        service.assignmentHistory.push({
+            technicianId: technicianId,
+            assignedAt: new Date().toISOString(),
+            action: 'assigned'
+        });
+        
         saveServices();
         assignMessage.textContent = 'Servicio asignado exitosamente.';
         assignMessage.className = 'text-success mt-3';
-        sendNotification(technicianId, `¡Nuevo servicio asignado! ID: ${serviceId}. Cliente: ${services[serviceIndex].clientName}. Ubicación: ${services[serviceIndex].location}.`);
+        
+        // Determinar el tipo de notificación
+        let notificationMessage;
+        if (isReassignment) {
+            notificationMessage = `🔄 ¡Servicio REASIGNADO! ID: ${serviceId}. Cliente: ${service.clientName}. Ubicación: ${service.location}. El servicio ha sido reasignado a ti después de haber sido desasignado anteriormente.`;
+            console.log(`🔄 Enviando notificación de reasignación al técnico ${technicianId} para el servicio ${serviceId}`);
+        } else {
+            notificationMessage = `¡Nuevo servicio asignado! ID: ${serviceId}. Cliente: ${service.clientName}. Ubicación: ${service.location}.`;
+            console.log(`📨 Enviando notificación de nueva asignación al técnico ${technicianId} para el servicio ${serviceId}`);
+        }
+        
+        sendNotification(technicianId, notificationMessage);
+        
         renderAdminServicesList(services, 1);
         renderAssignedServicesList(1);
         populateAssignServiceDropdown();
@@ -2195,6 +2313,19 @@ function unassignService(serviceId) {
                     return;
                 }
                 const oldTechnicianId = service.technicianId; // Capture old technician ID
+                
+                // Registrar la desasignación en el historial
+                if (!service.assignmentHistory) {
+                    service.assignmentHistory = [];
+                }
+                if (oldTechnicianId) {
+                    service.assignmentHistory.push({
+                        technicianId: oldTechnicianId,
+                        assignedAt: new Date().toISOString(),
+                        action: 'unassigned'
+                    });
+                }
+                
                 service.technicianId = null;
                 service.status = 'Pendiente';
                 saveServices();
@@ -2796,21 +2927,12 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
                     if (finalizationModal) {
                         finalizationModal.hide();
                     }
-                    // Cerrar la alerta de "obteniendo ubicación"
-                    setTimeout(() => {
-                        const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                        if (currentModal) currentModal.hide();
-                    }, 50);
                     
                     saveAndNotify();
                 },
                 (error) => {
                     // Error: mostrar mensaje específico
                     console.error('Error de geolocalización para cambio de estado:', error);
-                    setTimeout(() => {
-                        const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                        if (currentModal) currentModal.hide();
-                    }, 50);
                     showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
                 },
                 'cambio_estado'
@@ -2820,19 +2942,40 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
         }
 
         function saveAndNotify() {
+            console.log(`💾 Guardando cambios y enviando notificación para servicio ${id}...`);
+            console.log(`📊 Cambio de estado: ${oldStatus} → ${newStatus}`);
+            console.log(`👤 Técnico: ${currentUser.username}`);
+            
             saveServices();
             renderEmployeeAssignedServices(1);
             renderAdminServicesList(services, 1);
             updateEmployeeFilterCounts(); // Actualizar contadores de filtros
-            sendNotification('admin', `El servicio ID: ${id} ha cambiado de estado de "${oldStatus}" a "${newStatus}" por el técnico ${currentUser.username}. ${newStatus === 'Cancelado' ? `Motivo: ${cancellationReason}` : ''}`);
+            
+            // Construir mensaje de notificación
+            let notificationMessage = `El servicio ID: ${id} ha cambiado de estado de "${oldStatus}" a "${newStatus}" por el técnico ${currentUser.username}.`;
+            if (newStatus === 'Cancelado' && cancellationReason) {
+                notificationMessage += ` Motivo: ${cancellationReason}`;
+            }
+            
+            console.log(`📨 Enviando notificación: ${notificationMessage}`);
+            sendNotification('admin', notificationMessage);
+            
+            // Verificar que la notificación se envió correctamente
+            setTimeout(() => {
+                const adminNotifications = notifications.filter(n => {
+                    const targetUser = users.find(u => u.id === n.userId);
+                    return targetUser && targetUser.role === 'admin' && !n.read;
+                });
+                console.log(`✅ Verificación: ${adminNotifications.length} notificaciones no leídas para admin`);
+            }, 100);
+            
+            // Cerrar el modal de finalización de servicio de manera robusta
+            closeModalSafely('registerServiceModal');
             
             // Mostrar mensaje de éxito con ubicación para cancelación
             if (newStatus === 'Cancelado') {
-                // Cerrar el modal de cancelación si está abierto
-                const cancelReasonModal = bootstrap.Modal.getInstance(document.getElementById('cancelReasonModal'));
-                if (cancelReasonModal) {
-                    cancelReasonModal.hide();
-                }
+                // Cerrar el modal de cancelación si está abierto de manera robusta
+                closeModalSafely('cancelReasonModal');
                 
                 // Mostrar alerta con ubicación detallada después de un pequeño delay
                 setTimeout(() => {
@@ -2845,6 +2988,20 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
                         showAlert(`✅ Servicio cancelado exitosamente.\n\n📍 Ubicación registrada:\nCoordenadas: ${displayInfo.coordinates}\nPrecisión: ${displayInfo.accuracy}\nDirección: ${displayInfo.direction}\nVelocidad: ${displayInfo.speed}\nAltitud: ${displayInfo.altitude}\nNavegador: ${displayInfo.browser}\n\nMotivo de cancelación: ${cancellationReason}\n\nEl servicio ha sido marcado como "Cancelado" y se ha registrado la ubicación de cancelación.`);
                     } else {
                         showAlert(`✅ Servicio cancelado exitosamente.\n\nMotivo de cancelación: ${cancellationReason}\n\nEl servicio ha sido marcado como "Cancelado".`);
+                    }
+                }, 300);
+            } else if (newStatus === 'Finalizado') {
+                // Mostrar mensaje de éxito para servicios finalizados
+                setTimeout(() => {
+                    if (oldService.finalizationOrCancellationLocation) {
+                        if (!window.globalGeolocation) {
+                            window.globalGeolocation = new EnhancedGeolocation();
+                        }
+                        const displayInfo = window.globalGeolocation.formatLocationForDisplay(oldService.finalizationOrCancellationLocation);
+                        
+                        showAlert(`✅ Servicio finalizado exitosamente.\n\n📍 Ubicación registrada:\nCoordenadas: ${displayInfo.coordinates}\nPrecisión: ${displayInfo.accuracy}\nDirección: ${displayInfo.direction}\nVelocidad: ${displayInfo.speed}\nAltitud: ${displayInfo.altitude}\nNavegador: ${displayInfo.browser}\n\nEl servicio ha sido marcado como "Finalizado" y se ha registrado la ubicación de finalización.`);
+                    } else {
+                        showAlert(`✅ Servicio finalizado exitosamente.\n\nEl servicio ha sido marcado como "Finalizado".`);
                     }
                 }, 300);
             }
@@ -2865,17 +3022,9 @@ function startService(serviceId) {
         (locationData) => {
             // Éxito: ubicación obtenida
             saveServiceLocation(serviceId, locationData);
-            setTimeout(() => {
-                const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                if (currentModal) currentModal.hide();
-            }, 50);
         },
         (error) => {
             // Error: mostrar mensaje específico
-            setTimeout(() => {
-                const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
-                if (currentModal) currentModal.hide();
-            }, 50);
             console.error('Error de geolocalización:', error);
             showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
         },
@@ -2936,20 +3085,25 @@ function prefillNoveltyServiceId(serviceId) {
 // --- Notifications ---
 
 function sendNotification(targetRoleOrUserId, message) {
+    console.log(`🔔 Enviando notificación a: ${targetRoleOrUserId}`, { message });
+    
     let targetUsers = [];
     if (targetRoleOrUserId === 'admin') {
         targetUsers = users.filter(u => u.role === 'admin');
+        console.log(`👥 Usuarios admin encontrados:`, targetUsers.map(u => ({ id: u.id, username: u.username })));
     } else if (typeof targetRoleOrUserId === 'string' && targetRoleOrUserId.startsWith('_')) {
         const targetUser = users.find(u => u.id === targetRoleOrUserId);
         if (targetUser) {
             targetUsers.push(targetUser);
+            console.log(`👤 Usuario específico encontrado:`, { id: targetUser.id, username: targetUser.username });
         }
     } else {
-        console.warn("Invalid notification target:", targetRoleOrUserId);
+        console.warn("❌ Invalid notification target:", targetRoleOrUserId);
         return;
     }
 
     if (targetUsers.length > 0) {
+        let notificationsCreated = 0;
         targetUsers.forEach(user => {
             // Evitar duplicar notificaciones para el mismo usuario con el mismo mensaje
             const existingNotification = notifications.find(n => 
@@ -2960,21 +3114,35 @@ function sendNotification(targetRoleOrUserId, message) {
             );
             
             if (!existingNotification) {
-                notifications.push({
+                const newNotification = {
                     id: generateId(),
                     userId: user.id,
                     message: message,
                     timestamp: new Date().toISOString(),
                     read: false
-                });
+                };
+                notifications.push(newNotification);
+                notificationsCreated++;
+                console.log(`✅ Notificación creada para usuario ${user.username}:`, newNotification);
+            } else {
+                console.log(`⚠️ Notificación duplicada evitada para usuario ${user.username}`);
             }
         });
-        saveNotifications();
-        updateNotificationBadges();
+        
+        if (notificationsCreated > 0) {
+            saveNotifications();
+            updateNotificationBadges();
+            console.log(`📨 ${notificationsCreated} notificaciones enviadas exitosamente`);
+        } else {
+            console.log(`ℹ️ No se crearon nuevas notificaciones (posiblemente duplicadas)`);
+        }
+    } else {
+        console.warn("❌ No se encontraron usuarios para enviar notificación");
     }
 }
 
 function renderAdminNotifications(page = 1) {
+    console.log('📋 Renderizando notificaciones de administrador...');
     currentAdminNotificationsPage = page;
     const notificationsList = document.getElementById('admin-notifications-list');
     const notificationsContainer = notificationsList.closest('.card-body');
@@ -2985,12 +3153,16 @@ function renderAdminNotifications(page = 1) {
         return targetUser && targetUser.role === 'admin';
     }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
+    console.log(`📊 Total notificaciones admin encontradas: ${adminNotifications.length}`);
+
     const totalPages = getTotalPages(adminNotifications.length);
     const paginatedNotifications = paginateArray(adminNotifications, page);
 
     if (paginatedNotifications.length === 0) {
         notificationsList.innerHTML = '<p>No hay notificaciones para administradores.</p>';
+        console.log('ℹ️ No hay notificaciones para mostrar');
     } else {
+        console.log(`📄 Mostrando ${paginatedNotifications.length} notificaciones en página ${page}`);
         paginatedNotifications.forEach((n, index) => {
             const notificationDiv = document.createElement('div');
             notificationDiv.className = `alert ${n.read ? 'alert-light' : 'alert-info'} d-flex justify-content-between align-items-center`;
@@ -3021,6 +3193,7 @@ function renderAdminNotifications(page = 1) {
     generatePaginationControls(page, totalPages, 'admin-notifications-pagination', renderAdminNotifications);
     
     updateNotificationBadges();
+    console.log('✅ Notificaciones de administrador renderizadas');
 }
 
 function renderEmployeeNotifications(page = 1) {
@@ -3171,14 +3344,17 @@ function markReportReplyAsRead(reportId, replyTimestamp) {
 
 // --- Notification Badges in Nav ---
 function updateNotificationBadges() {
+    console.log('🔄 Actualizando badges de notificaciones...');
+    
     const adminReportsTab = document.getElementById('admin-reports-tab');
     const adminNotificationsTab = document.getElementById('admin-notifications-tab');
     const employeeNotificationsTab = document.getElementById('employee-notifications-tab');
 
     if (currentUser && currentUser.role === 'admin') {
         const unreadReportsCount = reports.filter(r => !r.readForAdmin).length;
-
         const unreadAdminNotificationsCount = notifications.filter(n => n.userId === currentUser.id && !n.read).length;
+
+        console.log(`📊 Admin - Reportes no leídos: ${unreadReportsCount}, Notificaciones no leídas: ${unreadAdminNotificationsCount}`);
 
         if (unreadReportsCount > 0) {
             adminReportsTab.innerHTML = `Reportes/Novedades <span class="badge bg-danger ms-1">${unreadReportsCount}</span>`;
@@ -3200,6 +3376,8 @@ function updateNotificationBadges() {
         ).length;
         const unreadReportRepliesCount = reports.filter(r => r.reporterId === currentUser.id && r.replies.some(reply => !reply.readForTechnician)).length;
 
+        console.log(`📊 Employee - Notificaciones no leídas: ${unreadEmployeeNotificationsCount}, Respuestas no leídas: ${unreadReportRepliesCount}`);
+
         // Actualizar badge de notificaciones
         if (unreadEmployeeNotificationsCount > 0) {
             employeeNotificationsTab.innerHTML = `Notificaciones <span class="badge bg-danger ms-1">${unreadEmployeeNotificationsCount}</span>`;
@@ -3216,6 +3394,244 @@ function updateNotificationBadges() {
                 employeeReportRepliesTab.innerHTML = `Respuestas de Reportes`;
             }
         }
+    }
+    
+    console.log('✅ Badges de notificaciones actualizados');
+}
+
+// --- Función de prueba del sistema de notificaciones ---
+function testNotificationSystem() {
+    console.log('🧪 Probando sistema de notificaciones...');
+    
+    // Verificar que hay usuarios admin
+    const adminUsers = users.filter(u => u.role === 'admin');
+    console.log('👥 Usuarios admin encontrados:', adminUsers);
+    
+    if (adminUsers.length === 0) {
+        showAlert('❌ No se encontraron usuarios administradores para enviar notificaciones de prueba.');
+        return;
+    }
+    
+    // Enviar notificación de prueba
+    const testMessage = `🧪 NOTIFICACIÓN DE PRUEBA: El sistema de notificaciones está funcionando correctamente. Fecha: ${new Date().toLocaleString()}`;
+    sendNotification('admin', testMessage);
+    
+    // Actualizar la vista de notificaciones
+    renderAdminNotifications(1);
+    
+    showAlert('✅ Notificación de prueba enviada. Verifica en la pestaña de notificaciones.');
+}
+
+// --- Función para limpiar notificaciones antiguas ---
+function cleanOldNotifications() {
+    console.log('🧹 Limpiando notificaciones antiguas...');
+    
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const initialCount = notifications.length;
+    const oldNotifications = notifications.filter(n => new Date(n.timestamp) < thirtyDaysAgo);
+    
+    // Eliminar notificaciones antiguas
+    notifications = notifications.filter(n => new Date(n.timestamp) >= thirtyDaysAgo);
+    
+    if (oldNotifications.length > 0) {
+        saveNotifications();
+        console.log(`🗑️ Eliminadas ${oldNotifications.length} notificaciones antiguas (más de 30 días)`);
+        showAlert(`🧹 Limpieza completada:\n\n🗑️ Se eliminaron ${oldNotifications.length} notificaciones antiguas (más de 30 días)\n📊 Total de notificaciones: ${initialCount} → ${notifications.length}`);
+    } else {
+        showAlert('ℹ️ No hay notificaciones antiguas para limpiar.\n\nTodas las notificaciones son recientes (menos de 30 días).');
+    }
+    
+    // Actualizar la vista
+    renderAdminNotifications(1);
+    
+    return oldNotifications.length;
+}
+
+// --- Función para verificar el estado del sistema de notificaciones ---
+function checkNotificationSystemStatus() {
+    console.log('🔍 Verificando estado del sistema de notificaciones...');
+    
+    const adminUsers = users.filter(u => u.role === 'admin');
+    const totalNotifications = notifications.length;
+    const unreadNotifications = notifications.filter(n => !n.read).length;
+    const adminNotifications = notifications.filter(n => {
+        const targetUser = users.find(u => u.id === n.userId);
+        return targetUser && targetUser.role === 'admin';
+    });
+    const unreadAdminNotifications = adminNotifications.filter(n => !n.read);
+    
+    console.log('📊 Estado del sistema:');
+    console.log(`  - Usuarios admin: ${adminUsers.length}`);
+    console.log(`  - Total notificaciones: ${totalNotifications}`);
+    console.log(`  - Notificaciones no leídas: ${unreadNotifications}`);
+    console.log(`  - Notificaciones admin: ${adminNotifications.length}`);
+    console.log(`  - Notificaciones admin no leídas: ${unreadAdminNotifications.length}`);
+    
+    // Mostrar alerta con el estado del sistema
+    const statusMessage = `🔍 Estado del Sistema de Notificaciones:\n\n` +
+        `👥 Usuarios administradores: ${adminUsers.length}\n` +
+        `📨 Total de notificaciones: ${totalNotifications}\n` +
+        `📬 Notificaciones no leídas: ${unreadNotifications}\n` +
+        `👨‍💼 Notificaciones para admin: ${adminNotifications.length}\n` +
+        `🔔 Notificaciones admin no leídas: ${unreadAdminNotifications.length}\n\n` +
+        `${adminUsers.length === 0 ? '⚠️ ADVERTENCIA: No hay usuarios administradores configurados' : '✅ Sistema funcionando correctamente'}`;
+    
+    showAlert(statusMessage);
+    
+    return {
+        adminUsers: adminUsers.length,
+        totalNotifications,
+        unreadNotifications,
+        adminNotifications: adminNotifications.length,
+        unreadAdminNotifications: unreadAdminNotifications.length
+    };
+}
+
+// --- Función para simular finalización de servicio y verificar notificaciones ---
+function testServiceFinalizationNotification() {
+    console.log('🧪 Probando notificación de finalización de servicio...');
+    
+    // Verificar que hay usuarios admin
+    const adminUsers = users.filter(u => u.role === 'admin');
+    if (adminUsers.length === 0) {
+        showAlert('❌ No hay usuarios administradores para enviar notificaciones de prueba.');
+        return;
+    }
+    
+    // Verificar que hay servicios disponibles
+    if (services.length === 0) {
+        showAlert('❌ No hay servicios disponibles para la prueba.');
+        return;
+    }
+    
+    // Buscar un servicio que no esté finalizado
+    const availableService = services.find(s => s.status !== 'Finalizado' && s.status !== 'Cancelado');
+    if (!availableService) {
+        showAlert('❌ No hay servicios disponibles para finalizar (todos están finalizados o cancelados).');
+        return;
+    }
+    
+    // Simular notificación de finalización
+    const testMessage = `🧪 PRUEBA: El servicio ID: ${availableService.id} ha sido finalizado por el técnico ${currentUser?.username || 'Técnico de Prueba'}. Cliente: ${availableService.clientName || 'Cliente de Prueba'}, Ubicación: ${availableService.location || 'Ubicación de Prueba'}`;
+    
+    console.log(`📨 Enviando notificación de prueba: ${testMessage}`);
+    sendNotification('admin', testMessage);
+    
+    // Actualizar la vista de notificaciones
+    renderAdminNotifications(1);
+    
+    showAlert(`✅ Notificación de finalización de servicio enviada.\n\nServicio: ${availableService.id}\nCliente: ${availableService.clientName || 'Cliente de Prueba'}\n\nVerifica en la pestaña de notificaciones del administrador.`);
+}
+
+// --- Función para diagnosticar el estado del formulario de finalización ---
+function diagnoseFinalizationForm() {
+    console.log('🔍 Diagnosticando formulario de finalización...');
+    
+    const formData = {
+        serviceId: document.getElementById('edit-service-id')?.value || 'No encontrado',
+        date: document.getElementById('service-date')?.value || 'No encontrado',
+        serviceCode: document.getElementById('service-code')?.value || 'No encontrado',
+        safeType: document.getElementById('service-type')?.value || 'No encontrado',
+        description: document.getElementById('service-description')?.value || 'No encontrado',
+        location: document.getElementById('service-location')?.value || 'No encontrado',
+        clientName: document.getElementById('service-client-name')?.value || 'No encontrado',
+        clientPhone: document.getElementById('service-client-phone')?.value || 'No encontrado',
+        status: document.getElementById('service-status')?.value || 'No encontrado'
+    };
+    
+    console.log('📋 Datos del formulario:', formData);
+    
+    // Verificar campos requeridos para finalización
+    const photoInput = document.getElementById('service-photo');
+    const photoPreview = document.getElementById('service-photo-preview');
+    const hasPhoto = photoInput?.files.length > 0 || (photoPreview?.src && photoPreview.src !== 'data:,' && !photoPreview.classList.contains('d-none'));
+    
+    const signatureStatus = {
+        hasClientSignature: signaturePadClient && !signaturePadClient.isEmpty(),
+        hasTechnicianSignature: signaturePadTechnician && !signaturePadTechnician.isEmpty(),
+        hasPhoto: hasPhoto
+    };
+    
+    console.log('✍️ Estado de firmas y foto:', signatureStatus);
+    
+    // Verificar si faltan campos
+    let missingFields = [];
+    if (!hasPhoto) missingFields.push('foto de evidencia');
+    if (signaturePadClient && signaturePadClient.isEmpty()) missingFields.push('firma del cliente');
+    if (signaturePadTechnician && signaturePadTechnician.isEmpty()) missingFields.push('firma del técnico');
+    
+    // Verificar estado del almacenamiento
+    const storageStats = getStorageStats();
+    const storageStatus = {
+        services: storageStats.services,
+        notifications: storageStats.notifications,
+        reports: storageStats.reports,
+        totalSize: storageStats.totalSize,
+        isNearLimit: storageStats.totalSize > 5000000 // 5MB aproximado
+    };
+    
+    const diagnosis = {
+        formComplete: Object.values(formData).every(value => value !== 'No encontrado' && value !== ''),
+        hasRequiredFields: missingFields.length === 0,
+        missingFields: missingFields,
+        currentUser: currentUser ? { username: currentUser.username, role: currentUser.role } : 'No hay usuario',
+        modalOpen: document.getElementById('registerServiceModal')?.classList.contains('show') || false,
+        storageStatus: storageStatus
+    };
+    
+    console.log('🔍 Diagnóstico completo:', diagnosis);
+    
+    const message = `🔍 Diagnóstico del Formulario de Finalización:\n\n` +
+        `📋 Formulario completo: ${diagnosis.formComplete ? '✅' : '❌'}\n` +
+        `✅ Campos requeridos: ${diagnosis.hasRequiredFields ? '✅' : '❌'}\n` +
+        `👤 Usuario: ${diagnosis.currentUser.username || 'No encontrado'} (${diagnosis.currentUser.role || 'No encontrado'})\n` +
+        `🪟 Modal abierto: ${diagnosis.modalOpen ? '✅' : '❌'}\n\n` +
+        `💾 Almacenamiento:\n` +
+        `   - Servicios: ${storageStats.services}\n` +
+        `   - Notificaciones: ${storageStats.notifications}\n` +
+        `   - Reportes: ${storageStats.reports}\n` +
+        `   - Tamaño: ${(storageStats.totalSize / 1024 / 1024).toFixed(2)} MB\n` +
+        `   - Estado: ${storageStatus.isNearLimit ? '⚠️ Cerca del límite' : '✅ Normal'}\n\n` +
+        `${missingFields.length > 0 ? `❌ Campos faltantes: ${missingFields.join(', ')}` : '✅ Todos los campos están completos'}`;
+    
+    showAlert(message);
+    
+    return diagnosis;
+}
+
+
+
+
+
+// --- Función para cerrar modales de manera robusta ---
+function closeModalSafely(modalId) {
+    console.log(`🔒 Intentando cerrar modal: ${modalId}`);
+    
+    try {
+        // Intentar obtener la instancia del modal
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById(modalId));
+        if (modalInstance) {
+            modalInstance.hide();
+            console.log(`✅ Modal ${modalId} cerrado exitosamente`);
+            return true;
+        } else {
+            // Si no hay instancia, intentar crear una nueva y ocultarla
+            const modalElement = document.getElementById(modalId);
+            if (modalElement) {
+                const newModalInstance = new bootstrap.Modal(modalElement);
+                newModalInstance.hide();
+                console.log(`✅ Modal ${modalId} cerrado con nueva instancia`);
+                return true;
+            } else {
+                console.warn(`⚠️ No se encontró el elemento del modal: ${modalId}`);
+                return false;
+            }
+        }
+    } catch (error) {
+        console.error(`❌ Error al cerrar modal ${modalId}:`, error);
+        return false;
     }
 }
 
@@ -3979,13 +4395,6 @@ function createRemisionFromService(serviceId) {
         return;
     }
 
-    // Evitar duplicados: verificar si ya existe una remisión para este servicio
-    const existing = remisiones.find(r => r.serviceId === serviceId);
-    if (existing) {
-        showAlert(`Este servicio ya tiene remisión (${existing.id}).`);
-        return;
-    }
-
     // Buscar el precio del servicio
     const costoServicio = costoServicios.find(cs => cs.codigo === service.serviceCode);
     const precio = costoServicio ? costoServicio.precio : 0;
@@ -4010,27 +4419,7 @@ function createRemisionFromService(serviceId) {
 
     remisiones.push(remision);
     saveRemisiones();
-    // Forzar recarga desde localStorage para evitar desincronización
-    remisiones = JSON.parse(localStorage.getItem('remisiones')) || remisiones;
-    // Limpiar posibles filtros y renderizar
-    if (typeof clearRemisionesFilters === 'function') {
-        clearRemisionesFilters();
-    } else {
-        renderRemisionesList();
-    }
-    // Refrescar lista de servicios para ocultar el botón de remisión del servicio ya utilizado
-    if (typeof renderAdminServicesList === 'function') {
-        renderAdminServicesList(services, 1);
-    }
-
-    // En UI: deshabilitar/remover el botón que disparó la acción si existe
-    const btn = document.querySelector(`button.btn.btn-success.btn-sm[data-service-id="${serviceId}"]`);
-    if (btn) {
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-outline-secondary');
-        btn.setAttribute('disabled', 'disabled');
-        btn.setAttribute('title', 'Ya tiene remisión');
-    }
+    renderRemisionesList();
 }
 
 function deleteRemision(id) {
@@ -4129,90 +4518,91 @@ function downloadRemisionPDF(remisionId) {
     // Configurar fuente y tamaño
     doc.setFont('helvetica');
     
-    // Función para cargar el logo de manera más robusta
-    function loadLogoAndGeneratePDF() {
-        console.log('🖼️ Usando logo embebido (base64) para máxima compatibilidad.');
-        // Para compatibilidad total (GitHub Pages / otros orígenes), usar SIEMPRE base64 embebido
-        loadLogoEmbedded();
-    }
-    
-    // Intentar primero cargar el logo desde archivo local; si falla, usa embebido
-    loadLogoAndGeneratePDF();
-    
-    // Función para cargar SOLO el logo local de Consegur embebido
-    function loadLogoEmbedded() {
-        console.log('🖼️ Cargando logo local de Consegur embebido...');
-
-        // Logo real de Consegur embebido en base64 (convertido desde la URL oficial)
-        const logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF0WlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNy4yLWMwMDAgNzkuMWI2NWE3OWI0LCAyMDIyLzA2LzEzLTIyOjAxOjAxICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjQuMCAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjQtMDEtMjBUMTU6NDc6NDctMDU6MDAiIHhtcDpNZXRhZGF0YURhdGU9IjIwMjQtMDEtMjBUMTU6NDc6NDctMDU6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDI0LTAxLTIwVDE1OjQ3OjQ3LTA1OjAwIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjY5ZDM4YmM1LTM4ZTAtNDI0Ny1hMzBkLTNmOWNhYzM3NzM0YyIgeG1wTU06RG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOjIyYzRkOTZiLTM4ZTAtNDI0Ny1hMzBkLTNmOWNhYzM3NzM0YyIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOjY5ZDM4YmM1LTM4ZTAtNDI0Ny1hMzBkLTNmOWNhYzM3NzM0YyIgZGM6Zm9ybWF0PSJpbWFnZS9wbmciIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiPiA8eG1wTU06SGlzdG9yeT4gPHJkZjpTZXE+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJjcmVhdGVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjY5ZDM4YmM1LTM4ZTAtNDI0Ny1hMzBkLTNmOWNhYzM3NzM0YyIgc3RFdnQ6d2hlbj0iMjAyNC0wMS0yMFQxNTo0Nzo0Ny0wNTowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIDI0LjAgKE1hY2ludG9zaCkiLz4gPC9yZGY6U2VxPiA8L3htcE1NOkhpc3Rvcnk+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+';
-
-        try {
-            // Preferir propiedades de imagen desde jsPDF para evitar CORS/onload
-            const props = doc.getImageProperties(logoBase64);
-            const imgWidthPx = props.width || 1;
-            const imgHeightPx = props.height || 1;
-
-            // Dimensiones del área designada para el logo (mm), centrado y un poco más grande
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const boxWidth = 75;
-            const boxHeight = 22;
-            const boxX = (pageWidth - boxWidth) / 2 - 24; // ajuste 24mm a la izquierda
-            const boxY = 32;
-
-            // Ajuste proporcional (contain) dentro del área
-            let logoWidth = boxWidth;
-            let logoHeight = (imgHeightPx * logoWidth) / imgWidthPx;
-            if (logoHeight > boxHeight) {
-                logoHeight = boxHeight;
-                logoWidth = (imgWidthPx * logoHeight) / imgHeightPx;
-            }
-
-            // Centrar el logo dentro del área designada
-            const logoX = boxX + (boxWidth - logoWidth) / 2;
-            const logoY = boxY + (boxHeight - logoHeight) / 2;
-
-            doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
-            console.log('✅ Logo embebido agregado con getImageProperties');
-            generatePDFContent(doc, remision);
-        } catch (e) {
-            console.error('❌ Fallback a carga de <img> por error en getImageProperties:', e);
+    // Función para cargar el logo de CONSEGUR desde assets
+    function loadConsegurLogo() {
+        console.log('🖼️ Cargando logo de CONSEGUR desde assets...');
+        
+        // URL del logo de CONSEGUR
+        const logoUrl = 'assets/logoconsegur.png';
+        
+        // Crear imagen para cargar el logo
+        const img = new Image();
+        
+        img.onload = () => {
             try {
-                const img = new Image();
-                img.onload = () => {
-                    const pageWidth = doc.internal.pageSize.getWidth();
-                    const boxWidth = 75;
-                    const boxHeight = 22;
-                    const boxX = (pageWidth - boxWidth) / 2 - 24; // ajuste 24mm a la izquierda
-                    const boxY = 32;
-                    let logoWidth = boxWidth;
-                    let logoHeight = (img.height * logoWidth) / img.width;
-                    if (logoHeight > boxHeight) {
-                        logoHeight = boxHeight;
-                        logoWidth = (img.width * logoHeight) / img.height;
-                    }
-                    const logoX = boxX + (boxWidth - logoWidth) / 2;
-                    const logoY = boxY + (boxHeight - logoHeight) / 2;
-                    doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
-                    generatePDFContent(doc, remision);
-                };
-                img.onerror = () => {
-                    console.log('⚠️ Error al cargar <img> embebido. Continuando sin logo...');
-                    generatePDFContent(doc, remision);
-                };
-                img.src = logoBase64;
-            } catch (inner) {
-                console.log('⚠️ No fue posible agregar el logo. Continuando...');
+                console.log('✅ Logo de CONSEGUR cargado correctamente:', {
+                    width: img.width,
+                    height: img.height,
+                    naturalWidth: img.naturalWidth,
+                    naturalHeight: img.naturalHeight
+                });
+                
+                // Crear canvas para convertir a base64
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                const logoBase64 = canvas.toDataURL('image/png');
+                console.log('✅ Base64 generado del logo de CONSEGUR');
+                
+                // Calcular dimensiones optimizadas para el PDF
+                const maxWidth = 60; // Ancho máximo en mm
+                const maxHeight = 30; // Alto máximo en mm
+                
+                let logoWidth = maxWidth;
+                let logoHeight = (img.height * logoWidth) / img.width;
+                
+                // Si la altura es muy grande, ajustar proporcionalmente
+                if (logoHeight > maxHeight) {
+                    logoHeight = maxHeight;
+                    logoWidth = (img.width * logoHeight) / img.height;
+                }
+                
+                // Posición alineada horizontalmente con IVA RÉGIMEN COMÚN y CLL 7 # 50-71
+                const logoX = 50; // Más a la izquierda
+                const logoY = 30; // Subido aún más arriba
+                
+                // Agregar el logo al PDF
+                doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
+                console.log('✅ Logo de CONSEGUR agregado exitosamente al PDF:', {
+                    position: { x: logoX, y: logoY },
+                    size: { width: logoWidth, height: logoHeight },
+                    originalSize: { width: img.width, height: img.height }
+                });
+                
+                // Continuar con el resto del contenido del PDF
+                generatePDFContent(doc, remision);
+                
+            } catch (e) {
+                console.error('❌ Error al procesar logo de CONSEGUR:', e);
+                console.log('⚠️ Continuando sin logo...');
                 generatePDFContent(doc, remision);
             }
-        }
+        };
+        
+        img.onerror = () => {
+            console.error('❌ Error al cargar logo de CONSEGUR desde:', logoUrl);
+            console.log('⚠️ Continuando sin logo...');
+            generatePDFContent(doc, remision);
+        };
+        
+        // Cargar la imagen desde la URL
+        img.src = logoUrl;
     }
+    
+    // Iniciar la carga del logo
+    loadConsegurLogo();
 }
 
 function generatePDFContent(doc, remision) {
     
     // Información de la empresa en la parte superior derecha
     doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold'); // Negrilla para CONSEGUR S.A.S.
     doc.text('CONSEGUR S.A.S.', 150, 30);
+    doc.setFont('helvetica', 'normal'); // Volver a normal
     doc.setFontSize(8);
     doc.text('NIT: 900514502-7', 150, 36);
     doc.text('IVA RÉGIMEN COMÚN', 150, 42);
@@ -4222,7 +4612,9 @@ function generatePDFContent(doc, remision) {
     
     // Título del documento centrado
     doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold'); // Negrilla para REMISIÓN DE SERVICIO
     doc.text('REMISIÓN DE SERVICIO', 105, 80, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); // Volver a normal
     
     // Línea separadora
     doc.line(20, 85, 190, 85);
@@ -4248,17 +4640,12 @@ function generatePDFContent(doc, remision) {
     const descLines = doc.splitTextToSize(remision.descripcion, 60);
     doc.text(descLines, 50, 140);
     
-    // Título del precio (centrado)
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text('Precio:', 105, 160, { align: 'center' });
-    // Precio centrado, en negrilla y más grande
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`$${remision.precio.toLocaleString()}`, 105, 168, { align: 'center' });
-    // Restaurar estilo para el resto del contenido
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    // Precio en negrilla, más grande y centrado
+    doc.setFont('helvetica', 'bold'); // Negrilla para Precio
+    doc.setFontSize(14); // Más grande
+    doc.text(`Precio: $${remision.precio.toLocaleString()}`, 105, 160, { align: 'center' }); // Todo en una línea centrado
+    doc.setFont('helvetica', 'normal'); // Volver a normal
+    doc.setFontSize(10); // Volver al tamaño normal
     
     // Columna derecha
     doc.text('Cliente:', 120, 100);
@@ -4282,30 +4669,36 @@ function generatePDFContent(doc, remision) {
     
     // Sección de firmas
     doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold'); // Negrilla para FIRMAS
     doc.text('FIRMAS:', 20, 195);
+    doc.setFont('helvetica', 'normal'); // Volver a normal
     
     // Firma del técnico
     doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold'); // Negrilla para Firma Técnico
     doc.text('Firma Técnico:', 20, 210);
-    doc.rect(20, 215, 70, 25); // Marco para firma
+    doc.setFont('helvetica', 'normal'); // Volver a normal
+    doc.rect(20, 215, 50, 15); // Marco para firma aún más pequeño
     
     // Agregar firma del técnico si existe
     if (remision.firmaTecnico) {
         try {
-            doc.addImage(remision.firmaTecnico, 'PNG', 22, 217, 66, 21);
+            doc.addImage(remision.firmaTecnico, 'PNG', 22, 217, 46, 11); // Firma aún más pequeña
         } catch (e) {
             console.log('Error al agregar firma del técnico:', e);
         }
     }
     
     // Firma del cliente
+    doc.setFont('helvetica', 'bold'); // Negrilla para Firma Cliente
     doc.text('Firma Cliente:', 120, 210);
-    doc.rect(120, 215, 70, 25); // Marco para firma
+    doc.setFont('helvetica', 'normal'); // Volver a normal
+    doc.rect(120, 215, 50, 15); // Marco para firma aún más pequeño
     
     // Agregar firma del cliente si existe
     if (remision.firmaCliente) {
         try {
-            doc.addImage(remision.firmaCliente, 'PNG', 122, 217, 66, 21);
+            doc.addImage(remision.firmaCliente, 'PNG', 122, 217, 46, 11); // Firma aún más pequeña
         } catch (e) {
             console.log('Error al agregar firma del cliente:', e);
         }
@@ -4991,13 +5384,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const editId = document.getElementById('edit-service-id').value;
         
         if (!editId) {
-        // Es un nuevo servicio, limpiar y poblar códigos
-        document.getElementById('service-form').reset();
-        populateServiceCodes();
-        document.getElementById('service-code').readOnly = false;
-        document.getElementById('service-type').value = '';
-        document.getElementById('service-description').value = '';
-        console.log('✅ Modal abierto para crear nuevo servicio');
+            // Es un nuevo servicio, limpiar formulario y poblar códigos
+            clearServiceForm();
+            populateServiceCodes();
+            console.log('✅ Modal abierto para crear nuevo servicio');
         } else {
             console.log('✅ Modal abierto para editar servicio con ID:', editId);
         }
@@ -5009,22 +5399,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const editId = document.getElementById('edit-costo-servicio-id').value;
         
         if (!editId) {
-        // Es un nuevo servicio, limpiar formulario completamente
-        const form = document.getElementById('costo-servicio-form');
-        form.reset();
-        document.getElementById('edit-costo-servicio-id').value = '';
-        document.getElementById('costo-servicio-codigo').value = '';
-        document.getElementById('costo-servicio-tipo').value = '';
-        document.getElementById('costo-servicio-descripcion').value = '';
-        document.getElementById('costo-servicio-precio').value = '';
-        // Configuración visual del código
-        const codigoInput = document.getElementById('costo-servicio-codigo');
-        codigoInput.readOnly = true;
-        codigoInput.style.backgroundColor = '#f8f9fa';
-        codigoInput.placeholder = 'Se generará automáticamente';
-        // Ocultar el campo de tipo personalizado
-        document.getElementById('otro-tipo-container').classList.add('d-none');
-        document.getElementById('costo-servicio-otro-tipo').value = '';
+            // Es un nuevo servicio, limpiar formulario
+            document.getElementById('costo-servicio-form').reset();
+            
+            // Configurar el campo de código para nuevos servicios
+            document.getElementById('costo-servicio-codigo').value = '';
+            document.getElementById('costo-servicio-codigo').readOnly = true;
+            document.getElementById('costo-servicio-codigo').style.backgroundColor = '#f8f9fa';
+            document.getElementById('costo-servicio-codigo').placeholder = 'Se generará automáticamente';
+            
+            // Ocultar el campo de tipo personalizado
+            document.getElementById('otro-tipo-container').classList.add('d-none');
+            document.getElementById('costo-servicio-otro-tipo').value = '';
             
             console.log('✅ Modal abierto para crear nuevo servicio');
         } else {
@@ -5084,15 +5470,38 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle required fields for Finalizado status for technician
         if (status === 'Finalizado' && currentUser.role === 'employee') {
             let missingFields = [];
+            
+            // Verificar foto de evidencia
             const photoInput = document.getElementById('service-photo');
-            if (!photoInput.files.length && !document.getElementById('service-photo-preview').src) missingFields.push('foto de evidencia');
-            if (signaturePadClient && signaturePadClient.isEmpty()) missingFields.push('firma del cliente');
-            if (signaturePadTechnician && signaturePadTechnician.isEmpty()) missingFields.push('firma del técnico');
+            const photoPreview = document.getElementById('service-photo-preview');
+            const hasPhoto = photoInput.files.length > 0 || (photoPreview.src && photoPreview.src !== 'data:,' && !photoPreview.classList.contains('d-none'));
+            
+            if (!hasPhoto) {
+                missingFields.push('foto de evidencia');
+            }
+            
+            // Verificar firma del cliente
+            if (signaturePadClient && signaturePadClient.isEmpty()) {
+                missingFields.push('firma del cliente');
+            }
+            
+            // Verificar firma del técnico
+            if (signaturePadTechnician && signaturePadTechnician.isEmpty()) {
+                missingFields.push('firma del técnico');
+            }
 
             if (missingFields.length > 0) {
+                console.log('❌ Campos faltantes para finalizar servicio:', missingFields);
+                console.log('📸 Estado de foto:', { 
+                    hasFiles: photoInput.files.length > 0, 
+                    hasPreview: photoPreview.src && photoPreview.src !== 'data:,', 
+                    isHidden: photoPreview.classList.contains('d-none') 
+                });
                 showAlert(`Para finalizar el servicio, por favor proporcione: ${missingFields.join(', ')}.`);
                 return; // Prevent form submission
             }
+            
+            console.log('✅ Todos los campos requeridos están completos para finalizar el servicio');
         }
         
         // Obtener datos de foto si existe

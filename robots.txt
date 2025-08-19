@@ -1,0 +1,30 @@
+User-agent: *
+Disallow: /assets/
+Disallow: /css/
+Disallow: /js/
+Disallow: /docs/
+Disallow: /.git/
+Disallow: /node_modules/
+Disallow: /*.htaccess
+Disallow: /*.log
+Disallow: /*.ini
+Disallow: /*.conf
+Disallow: /*.db
+Disallow: /*.sqlite
+Disallow: /*.bak
+Disallow: /*.backup
+Disallow: /web.config
+Disallow: /robots.txt
+
+# Permitir solo la página principal
+Allow: /index.html
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.ico
+
+# Sitemap (opcional)
+# Sitemap: https://tudominio.com/sitemap.xml
