@@ -670,10 +670,45 @@ function saveUsers() {
 
 function saveServices() {
     try {
-        localStorage.setItem('services', JSON.stringify(services));
+        console.log('🔄 Guardando servicios en localStorage...');
+        console.log('📊 Número de servicios a guardar:', services.length);
+        
+        // Verificar que services sea un array válido
+        if (!Array.isArray(services)) {
+            console.error('❌ services no es un array válido:', services);
+            throw new Error('Datos de servicios inválidos');
+        }
+        
+        // Verificar que localStorage esté disponible
+        if (typeof localStorage === 'undefined') {
+            console.error('❌ localStorage no está disponible');
+            throw new Error('Almacenamiento local no disponible');
+        }
+        
+        const servicesJson = JSON.stringify(services);
+        console.log('📝 JSON generado, tamaño:', servicesJson.length, 'caracteres');
+        
+        localStorage.setItem('services', servicesJson);
         console.log('✅ Servicios guardados exitosamente en localStorage');
+        
+        // Verificar que se guardó correctamente
+        const savedData = localStorage.getItem('services');
+        if (!savedData) {
+            throw new Error('Los datos no se guardaron correctamente');
+        }
+        
+        console.log('✅ Verificación: datos guardados correctamente');
+        
     } catch (error) {
         console.error('❌ Error al guardar servicios:', error);
+        console.error('🔍 Tipo de error:', error.name);
+        console.error('🔍 Mensaje de error:', error.message);
+        
+        // Si es un error de quota, dar un mensaje más específico
+        if (error.name === 'QuotaExceededError') {
+            throw new Error('Espacio de almacenamiento insuficiente. Por favor, elimine algunos datos o use otro navegador.');
+        }
+        
         throw new Error('Error al guardar los servicios. Por favor, intente nuevamente.');
     }
 }
@@ -1793,10 +1828,27 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
         
                 // Intentar guardar el servicio
         try {
+            console.log('🔄 Intentando guardar servicio...');
+            console.log('📊 Datos a guardar:', services);
             saveServices();
             console.log('✅ Servicio guardado exitosamente');
         } catch (error) {
             console.error('❌ Error al guardar servicio:', error);
+            console.error('🔍 Detalles del error:', error.message, error.stack);
+            
+            // Verificar si es un problema de localStorage
+            try {
+                const testData = { test: 'data' };
+                localStorage.setItem('test', JSON.stringify(testData));
+                const retrieved = localStorage.getItem('test');
+                localStorage.removeItem('test');
+                console.log('✅ localStorage funciona correctamente');
+            } catch (storageError) {
+                console.error('❌ Problema con localStorage:', storageError);
+                showAlert('❌ Error de almacenamiento. Verifique que el navegador tenga suficiente espacio y que no esté en modo privado.');
+                return;
+            }
+            
             showAlert('❌ Error al guardar el servicio. Por favor, intente nuevamente.');
             return;
         }
@@ -4389,37 +4441,72 @@ function setupRemisionServiceSearch() {
 }
 
 function createRemisionFromService(serviceId) {
-    const service = services.find(s => s.id === serviceId);
-    if (!service) {
-        showAlert('Servicio no encontrado');
-        return;
+    console.log('🔄 Creando remisión para servicio ID:', serviceId);
+    
+    try {
+        // Verificar que services esté cargado
+        if (!services || !Array.isArray(services)) {
+            console.error('❌ services no está disponible o no es un array');
+            showAlert('Error: Datos de servicios no disponibles');
+            return;
+        }
+        
+        const service = services.find(s => s.id === serviceId);
+        console.log('🔍 Servicio encontrado:', service);
+        
+        if (!service) {
+            console.error('❌ Servicio no encontrado con ID:', serviceId);
+            showAlert('Servicio no encontrado');
+            return;
+        }
+
+        // Buscar el precio del servicio
+        const costoServicio = costoServicios.find(cs => cs.codigo === service.serviceCode);
+        const precio = costoServicio ? costoServicio.precio : 0;
+        console.log('💰 Precio encontrado:', precio);
+
+        const remision = {
+            id: generateRemisionId(),
+            fecha: service.date,
+            codigoServicio: service.serviceCode || '',
+            tipoServicio: service.safeType,
+            descripcion: service.description || '',
+            ubicacion: service.location,
+            tecnicoId: service.technicianId,
+            cliente: service.clientName,
+            telefonoCliente: service.clientPhone,
+            horaInicio: service.startTime || '',
+            horaFinalizacion: service.finalizationOrCancellationTime || '',
+            firmaTecnico: service.technicianSignature || '',
+            firmaCliente: service.clientSignature || '',
+            precio: precio,
+            serviceId: serviceId
+        };
+
+        console.log('📝 Remisión creada:', remision);
+
+        // Verificar que remisiones sea un array
+        if (!Array.isArray(remisiones)) {
+            console.error('❌ remisiones no es un array, inicializando...');
+            remisiones = [];
+        }
+
+        remisiones.push(remision);
+        console.log('✅ Remisión agregada al array, total:', remisiones.length);
+        
+        saveRemisiones();
+        console.log('✅ Remisión guardada en localStorage');
+        
+        renderRemisionesList();
+        console.log('✅ Lista de remisiones actualizada');
+        
+        showAlert('✅ Remisión generada exitosamente');
+        
+    } catch (error) {
+        console.error('❌ Error al crear remisión:', error);
+        console.error('🔍 Detalles del error:', error.message, error.stack);
+        showAlert('❌ Error al generar la remisión. Por favor, intente nuevamente.');
     }
-
-    // Buscar el precio del servicio
-    const costoServicio = costoServicios.find(cs => cs.codigo === service.serviceCode);
-    const precio = costoServicio ? costoServicio.precio : 0;
-
-    const remision = {
-        id: generateRemisionId(),
-        fecha: service.date,
-        codigoServicio: service.serviceCode || '',
-        tipoServicio: service.safeType,
-        descripcion: service.description || '',
-        ubicacion: service.location,
-        tecnicoId: service.technicianId,
-        cliente: service.clientName,
-        telefonoCliente: service.clientPhone,
-        horaInicio: service.startTime || '',
-        horaFinalizacion: service.finalizationOrCancellationTime || '',
-        firmaTecnico: service.technicianSignature || '',
-        firmaCliente: service.clientSignature || '',
-        precio: precio,
-        serviceId: serviceId
-    };
-
-    remisiones.push(remision);
-    saveRemisiones();
-    renderRemisionesList();
 }
 
 function deleteRemision(id) {
@@ -5366,15 +5453,36 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listener para el formulario de generar remisión
     document.getElementById('generate-remision-form').addEventListener('submit', function(e) {
         e.preventDefault();
+        console.log('🔄 Formulario de generar remisión enviado');
         
-        const serviceId = document.getElementById('remision-service-id').value;
-        if (serviceId) {
+        try {
+            const serviceId = document.getElementById('remision-service-id').value;
+            console.log('🔍 Service ID seleccionado:', serviceId);
+            
+            if (!serviceId || serviceId.trim() === '') {
+                console.error('❌ No se seleccionó ningún servicio');
+                showAlert('Por favor seleccione un servicio para generar la remisión');
+                return;
+            }
+            
+            console.log('✅ Service ID válido, creando remisión...');
             createRemisionFromService(serviceId);
             
             // Cerrar modal y limpiar formulario
             const modal = bootstrap.Modal.getInstance(document.getElementById('generateRemisionModal'));
-            modal.hide();
+            if (modal) {
+                modal.hide();
+                console.log('✅ Modal cerrado');
+            } else {
+                console.warn('⚠️ No se pudo cerrar el modal');
+            }
+            
             document.getElementById('generate-remision-form').reset();
+            console.log('✅ Formulario limpiado');
+            
+        } catch (error) {
+            console.error('❌ Error en el evento submit del formulario de remisión:', error);
+            showAlert('❌ Error al procesar la solicitud. Por favor, intente nuevamente.');
         }
     });
     
