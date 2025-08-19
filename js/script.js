@@ -1,11 +1,42 @@
 // Global variables for managing state and data
 let currentUser = null;
-let users = JSON.parse(localStorage.getItem('users')) || [];
-let services = JSON.parse(localStorage.getItem('services')) || [];
-let reports = JSON.parse(localStorage.getItem('reports')) || [];
-let notifications = JSON.parse(localStorage.getItem('notifications')) || [];
-let costoServicios = JSON.parse(localStorage.getItem('costoServicios')) || [];
-let remisiones = JSON.parse(localStorage.getItem('remisiones')) || [];
+
+// Función para cargar datos de manera segura
+function loadDataSafely(key, defaultValue = []) {
+    try {
+        const data = localStorage.getItem(key);
+        if (data) {
+            const parsed = JSON.parse(data);
+            if (Array.isArray(parsed)) {
+                return parsed;
+            } else {
+                console.warn(`⚠️ ${key} no es un array, usando valor por defecto`);
+                return defaultValue;
+            }
+        }
+        return defaultValue;
+    } catch (error) {
+        console.error(`❌ Error al cargar ${key}:`, error);
+        return defaultValue;
+    }
+}
+
+// Cargar datos de manera segura
+let users = loadDataSafely('users', []);
+let services = loadDataSafely('services', []);
+let reports = loadDataSafely('reports', []);
+let notifications = loadDataSafely('notifications', []);
+let costoServicios = loadDataSafely('costoServicios', []);
+let remisiones = loadDataSafely('remisiones', []);
+
+console.log('📊 Datos cargados:', {
+    users: users.length,
+    services: services.length,
+    reports: reports.length,
+    notifications: notifications.length,
+    costoServicios: costoServicios.length,
+    remisiones: remisiones.length
+});
 
 // Debug: Verificar carga de datos de costo servicios
 console.log('📊 Datos de costo servicios cargados:', costoServicios);
@@ -1827,11 +1858,13 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
         
         
                 // Intentar guardar el servicio
+        let saveSuccessful = false;
         try {
             console.log('🔄 Intentando guardar servicio...');
             console.log('📊 Datos a guardar:', services);
             saveServices();
             console.log('✅ Servicio guardado exitosamente');
+            saveSuccessful = true;
         } catch (error) {
             console.error('❌ Error al guardar servicio:', error);
             console.error('🔍 Detalles del error:', error.message, error.stack);
@@ -1853,6 +1886,14 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
             return;
         }
         
+        // Solo continuar si el guardado fue exitoso
+        if (!saveSuccessful) {
+            console.log('❌ No se pudo guardar el servicio, deteniendo proceso');
+            return;
+        }
+        
+        console.log('✅ Servicio guardado exitosamente, continuando con el proceso...');
+        
         renderAdminServicesList(services, 1);
         populateAssignServiceDropdown();
         
@@ -1862,13 +1903,26 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
             console.log(`📨 Enviando notificación de finalización: ${notificationMessage}`);
             console.log(`👤 Técnico: ${currentUser.username}`);
             console.log(`🆔 ID del servicio: ${finalId}`);
-            sendNotification('admin', notificationMessage);
+            console.log(`👥 Usuarios disponibles:`, users.map(u => ({ id: u.id, username: u.username, role: u.role })));
+            
+            try {
+                sendNotification('admin', notificationMessage);
+                console.log('✅ Notificación enviada exitosamente');
+            } catch (notificationError) {
+                console.error('❌ Error al enviar notificación:', notificationError);
+            }
         } else {
             console.log(`ℹ️ No se envía notificación - Status: ${status}, Role: ${currentUser?.role}`);
         }
         
         // Cerrar el modal después de guardar exitosamente de manera robusta
-        closeModalSafely('registerServiceModal');
+        console.log('🔒 Cerrando modal de registro de servicio...');
+        const modalClosed = closeModalSafely('registerServiceModal');
+        if (modalClosed) {
+            console.log('✅ Modal cerrado exitosamente');
+        } else {
+            console.warn('⚠️ No se pudo cerrar el modal automáticamente');
+        }
         
         document.getElementById('service-form').reset();
         clearSignaturePad('client');
@@ -1887,8 +1941,14 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
         }
 
         if (currentUser.role === 'employee') {
+            console.log('🔄 Actualizando vista de servicios del técnico...');
             renderEmployeeAssignedServices(1);
             updateEmployeeFilterCounts(); // Actualizar contadores de filtros
+            console.log('✅ Vista de servicios del técnico actualizada');
+        } else if (currentUser.role === 'admin') {
+            console.log('🔄 Actualizando vista de servicios del admin...');
+            renderAdminServicesList(services, 1);
+            console.log('✅ Vista de servicios del admin actualizada');
         }
         
         // Mostrar mensaje de éxito apropiado según el estado (solo para técnicos)
@@ -4246,8 +4306,16 @@ function handleCostoServiciosImport(event) {
 
 // Funciones para el módulo de Remisiones
 function renderRemisionesList(filteredRemisiones = remisiones) {
+    console.log('🔄 Renderizando lista de remisiones...');
+    console.log('📊 Remisiones a renderizar:', filteredRemisiones);
+    
     const remisionesList = document.getElementById('remisiones-list');
     const remisionesCards = document.getElementById('remisiones-cards');
+    
+    if (!remisionesList || !remisionesCards) {
+        console.error('❌ Elementos de remisiones no encontrados');
+        return;
+    }
     
     remisionesList.innerHTML = '';
     remisionesCards.innerHTML = '';
@@ -4497,8 +4565,15 @@ function createRemisionFromService(serviceId) {
         saveRemisiones();
         console.log('✅ Remisión guardada en localStorage');
         
+        // Forzar la actualización de la vista de remisiones
+        console.log('🔄 Actualizando vista de remisiones...');
         renderRemisionesList();
         console.log('✅ Lista de remisiones actualizada');
+        
+        // Actualizar también la vista de servicios si es necesario
+        if (currentUser.role === 'admin') {
+            renderAdminServicesList(services, 1);
+        }
         
         showAlert('✅ Remisión generada exitosamente');
         
