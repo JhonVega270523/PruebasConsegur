@@ -63,7 +63,7 @@ if (users.length === 0) {
         {
             id: generateId(),
             username: 'admin',
-            password: 'admin',
+            password: '12345',
             role: 'admin'
         }
     ];
