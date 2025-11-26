@@ -2556,16 +2556,12 @@ function filterServices() {
     const dateFrom = document.getElementById('filter-date-from').value;
     const dateTo = document.getElementById('filter-date-to').value;
 
-    let filtered = services;
-
-    // Filtrar por estado
-    if (currentAdminServicesStatusFilter !== 'todos') {
-        filtered = filtered.filter(service => service.status === currentAdminServicesStatusFilter);
-    }
+    // Filtrar solo por búsqueda y fechas (sin el filtro de estado) para las estadísticas
+    let filteredForStats = services;
 
     // Filtrar por término de búsqueda
     if (searchTerm) {
-        filtered = filtered.filter(service => {
+        filteredForStats = filteredForStats.filter(service => {
             const serviceId = service.id.toLowerCase();
             const serviceCode = (service.serviceCode || '').toLowerCase();
             const clientName = service.clientName.toLowerCase();
@@ -2586,16 +2582,23 @@ function filterServices() {
 
     // Filtrar por fecha desde
     if (dateFrom) {
-        filtered = filtered.filter(service => service.date >= dateFrom);
+        filteredForStats = filteredForStats.filter(service => service.date >= dateFrom);
     }
 
     // Filtrar por fecha hasta
     if (dateTo) {
-        filtered = filtered.filter(service => service.date <= dateTo);
+        filteredForStats = filteredForStats.filter(service => service.date <= dateTo);
+    }
+
+    // Ahora aplicar también el filtro de estado para la lista mostrada
+    let filtered = filteredForStats;
+    if (currentAdminServicesStatusFilter !== 'todos') {
+        filtered = filtered.filter(service => service.status === currentAdminServicesStatusFilter);
     }
 
     renderAdminServicesList(filtered);
-    updateServicesStatistics();
+    // Pasar los servicios filtrados (solo por fecha/búsqueda, no por estado) para las estadísticas
+    updateServicesStatistics(filteredForStats);
 }
 
 function filterServicesByStatus(status) {
@@ -2618,13 +2621,15 @@ function clearFilters() {
     filterServices();
 }
 
-function updateServicesStatistics() {
-    // Siempre usar el array completo de servicios para que los números no cambien al filtrar
-    const total = services.length;
-    const completed = services.filter(s => s.status === 'Finalizado').length;
-    const inProgress = services.filter(s => s.status === 'En proceso').length;
-    const pending = services.filter(s => s.status === 'Pendiente').length;
-    const cancelled = services.filter(s => s.status === 'Cancelado').length;
+function updateServicesStatistics(filteredServices = null) {
+    // Si se proporcionan servicios filtrados, usar esos; si no, usar el array completo
+    const servicesToCount = filteredServices !== null ? filteredServices : services;
+    
+    const total = servicesToCount.length;
+    const completed = servicesToCount.filter(s => s.status === 'Finalizado').length;
+    const inProgress = servicesToCount.filter(s => s.status === 'En proceso').length;
+    const pending = servicesToCount.filter(s => s.status === 'Pendiente').length;
+    const cancelled = servicesToCount.filter(s => s.status === 'Cancelado').length;
 
     document.getElementById('total-services-count').textContent = total;
     document.getElementById('completed-services-count').textContent = completed;
@@ -2883,8 +2888,8 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
         const serviceTime = document.getElementById('service-time');
         if (serviceTime) serviceTime.value = '';
         
-        const serviceCode = document.getElementById('service-code');
-        if (serviceCode) serviceCode.value = '';
+        const serviceCodeElement = document.getElementById('service-code');
+        if (serviceCodeElement) serviceCodeElement.value = '';
         
         const serviceType = document.getElementById('service-type');
         if (serviceType) serviceType.value = '';
