@@ -2756,6 +2756,9 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
                 window.globalGeolocation = new EnhancedGeolocation();
             }
             
+            // Capturar valores del formulario ANTES de cerrar el modal (importante para móvil)
+            const serviceCodeValue = document.getElementById('service-code') ? document.getElementById('service-code').value : '';
+            
             // Cerrar el modal de finalización antes de obtener la ubicación (igual que startService)
             const finalizationModal = bootstrap.Modal.getInstance(document.getElementById('registerServiceModal'));
             if (finalizationModal) {
@@ -2783,7 +2786,7 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
                         context: locationData.context
                     };
                     // Proceder a guardar una vez obtenida la ubicación
-                    finalizeServiceSave();
+                    finalizeServiceSave(serviceCodeValue);
                 },
                 (error) => {
                     // Error: mostrar mensaje específico
@@ -2792,24 +2795,32 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
                 'finalizacion_servicio'
             );
         } else {
-            finalizeServiceSave(); // Save directly if not finalization/cancellation by employee
+            // Capturar serviceCode antes de guardar (por si acaso)
+            const serviceCodeValue = document.getElementById('service-code') ? document.getElementById('service-code').value : '';
+            finalizeServiceSave(serviceCodeValue); // Save directly if not finalization/cancellation by employee
         }
 
-    function finalizeServiceSave() {
+    function finalizeServiceSave(serviceCodeValue = null) {
         // Validar y corregir IDs antes de crear nuevo servicio
         validateAndCorrectIds();
         
-        // Obtener el serviceId del campo oculto
-        const serviceId = document.getElementById('edit-service-id').value;
+        // Obtener el serviceId del campo oculto (puede estar en el DOM aunque el modal esté cerrado)
+        const serviceIdElement = document.getElementById('edit-service-id');
+        const serviceId = serviceIdElement ? serviceIdElement.value : '';
+        
         // Obtener el consecutivo del cliente para generar el ID
         const clientConsecutive = getClientConsecutiveByName(clientName);
         const generatedId = generateServiceId(clientConsecutive);
         const finalId = serviceId && serviceId.trim() !== '' ? serviceId : generatedId;
+        
+        // Usar el serviceCode capturado antes de cerrar el modal, o intentar obtenerlo del DOM
+        const serviceCode = serviceCodeValue || (document.getElementById('service-code') ? document.getElementById('service-code').value : '');
+        
         const newService = {
             id: finalId,
             date,
             time: String(time || '').trim(),
-            serviceCode: document.getElementById('service-code').value,
+            serviceCode: serviceCode,
             safeType,
             description,
             location,
@@ -2857,24 +2868,59 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
             modal.hide();
         }
         
-        // Limpiar completamente el formulario
-        document.getElementById('service-form').reset();
-        document.getElementById('edit-service-id').value = '';
-        document.getElementById('service-date').value = '';
-        document.getElementById('service-time').value = '';
-        document.getElementById('service-code').value = '';
-        document.getElementById('service-type').value = '';
-        document.getElementById('service-description').value = '';
-        document.getElementById('service-quantity').value = '1';
-        document.getElementById('service-client-name').value = '';
-        document.getElementById('service-client-nit').value = '';
-        document.getElementById('service-location').value = '';
-        document.getElementById('service-client-phone').value = '';
-        document.getElementById('service-client-email').value = '';
-        document.getElementById('service-status').value = 'Pendiente';
-        document.getElementById('service-photo').value = '';
-        document.getElementById('service-photo-preview').src = '';
-        document.getElementById('service-photo-preview').classList.add('d-none');
+        // Limpiar completamente el formulario (verificar que los elementos existan para evitar errores en móvil)
+        const serviceForm = document.getElementById('service-form');
+        if (serviceForm) {
+            serviceForm.reset();
+        }
+        
+        const editServiceId = document.getElementById('edit-service-id');
+        if (editServiceId) editServiceId.value = '';
+        
+        const serviceDate = document.getElementById('service-date');
+        if (serviceDate) serviceDate.value = '';
+        
+        const serviceTime = document.getElementById('service-time');
+        if (serviceTime) serviceTime.value = '';
+        
+        const serviceCode = document.getElementById('service-code');
+        if (serviceCode) serviceCode.value = '';
+        
+        const serviceType = document.getElementById('service-type');
+        if (serviceType) serviceType.value = '';
+        
+        const serviceDescription = document.getElementById('service-description');
+        if (serviceDescription) serviceDescription.value = '';
+        
+        const serviceQuantity = document.getElementById('service-quantity');
+        if (serviceQuantity) serviceQuantity.value = '1';
+        
+        const serviceClientName = document.getElementById('service-client-name');
+        if (serviceClientName) serviceClientName.value = '';
+        
+        const serviceClientNit = document.getElementById('service-client-nit');
+        if (serviceClientNit) serviceClientNit.value = '';
+        
+        const serviceLocation = document.getElementById('service-location');
+        if (serviceLocation) serviceLocation.value = '';
+        
+        const serviceClientPhone = document.getElementById('service-client-phone');
+        if (serviceClientPhone) serviceClientPhone.value = '';
+        
+        const serviceClientEmail = document.getElementById('service-client-email');
+        if (serviceClientEmail) serviceClientEmail.value = '';
+        
+        const serviceStatus = document.getElementById('service-status');
+        if (serviceStatus) serviceStatus.value = 'Pendiente';
+        
+        const servicePhoto = document.getElementById('service-photo');
+        if (servicePhoto) servicePhoto.value = '';
+        
+        const servicePhotoPreview = document.getElementById('service-photo-preview');
+        if (servicePhotoPreview) {
+            servicePhotoPreview.src = '';
+            servicePhotoPreview.classList.add('d-none');
+        }
         
         // Limpiar servicios adicionales
         const additionalServicesContainer = document.getElementById('additional-services-container');
@@ -2883,8 +2929,12 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
         }
         
         // Limpiar firmas
-        clearSignaturePad('client');
-        clearSignaturePad('technician');
+        try {
+            clearSignaturePad('client');
+            clearSignaturePad('technician');
+        } catch (e) {
+            // Ignorar errores si los elementos no están disponibles
+        }
         
         // Limpiar sugerencias
         const clientNameSuggestions = document.getElementById('client-name-suggestions');
@@ -2900,9 +2950,14 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
         }
         
         // Ocultar secciones dinámicas
-        document.getElementById('photo-evidence-section').classList.add('d-none');
-        document.getElementById('client-signature-section').classList.add('d-none');
-        document.getElementById('technician-signature-section').classList.add('d-none');
+        const photoEvidenceSection = document.getElementById('photo-evidence-section');
+        if (photoEvidenceSection) photoEvidenceSection.classList.add('d-none');
+        
+        const clientSignatureSection = document.getElementById('client-signature-section');
+        if (clientSignatureSection) clientSignatureSection.classList.add('d-none');
+        
+        const technicianSignatureSection = document.getElementById('technician-signature-section');
+        if (technicianSignatureSection) technicianSignatureSection.classList.add('d-none');
 
         if (currentUser.role === 'employee') {
             renderEmployeeAssignedServices(1);
