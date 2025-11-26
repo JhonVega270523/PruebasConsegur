@@ -1391,6 +1391,223 @@ body {
         padding: var(--space-2) var(--space-4);
         font-size: 0.875rem;
     }
+    
+    /* ===== ESTILOS COMPACTOS PARA REPORTES, NOTIFICACIONES Y RESPUESTAS EN MÓVIL ===== */
+    
+    /* Reportes y Novedades - Admin */
+    #reports-list .alert {
+        padding: 0.5rem 0.75rem !important;
+        margin-bottom: 0.5rem !important;
+        font-size: 0.8rem !important;
+        border-radius: 6px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    #reports-list .alert .d-flex {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    #reports-list .alert .badge {
+        font-size: 0.65rem !important;
+        padding: 0.2rem 0.4rem !important;
+        margin-bottom: 0.25rem !important;
+        margin-right: 0 !important;
+    }
+    
+    #reports-list .alert strong {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+    }
+    
+    #reports-list .alert .btn {
+        font-size: 0.7rem !important;
+        padding: 0.3rem 0.6rem !important;
+        margin-top: 0.5rem !important;
+        width: 100% !important;
+    }
+    
+    #reports-list .list-group {
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    #reports-list .list-group-item {
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.75rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    
+    #reports-list .list-group-item strong {
+        font-size: 0.7rem !important;
+    }
+    
+    /* Notificaciones Admin */
+    #admin-notifications-list .alert {
+        padding: 0.5rem 0.75rem !important;
+        margin-bottom: 0.5rem !important;
+        font-size: 0.8rem !important;
+        border-radius: 6px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    #admin-notifications-list .alert .d-flex {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    #admin-notifications-list .alert .badge {
+        font-size: 0.65rem !important;
+        padding: 0.2rem 0.4rem !important;
+        margin-bottom: 0.25rem !important;
+        margin-right: 0 !important;
+    }
+    
+    #admin-notifications-list .alert strong {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+    }
+    
+    #admin-notifications-list .alert .btn {
+        font-size: 0.7rem !important;
+        padding: 0.3rem 0.6rem !important;
+        margin-top: 0.5rem !important;
+        width: 100% !important;
+    }
+    
+    /* Notificaciones Técnico */
+    #employee-notifications-list .alert {
+        padding: 0.5rem 0.75rem !important;
+        margin-bottom: 0.5rem !important;
+        font-size: 0.8rem !important;
+        border-radius: 6px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    #employee-notifications-list .alert .d-flex {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    #employee-notifications-list .alert .badge {
+        font-size: 0.65rem !important;
+        padding: 0.2rem 0.4rem !important;
+        margin-bottom: 0.25rem !important;
+        margin-right: 0 !important;
+    }
+    
+    #employee-notifications-list .alert strong {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+    }
+    
+    #employee-notifications-list .alert .btn {
+        font-size: 0.7rem !important;
+        padding: 0.3rem 0.6rem !important;
+        margin-top: 0.5rem !important;
+        width: 100% !important;
+    }
+    
+    /* Respuestas de Reportes - Técnico */
+    #employee-report-replies-list .alert {
+        padding: 0.5rem 0.75rem !important;
+        margin-bottom: 0.5rem !important;
+        font-size: 0.8rem !important;
+        border-radius: 6px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    #employee-report-replies-list .alert .d-flex {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    #employee-report-replies-list .alert .badge {
+        font-size: 0.65rem !important;
+        padding: 0.2rem 0.4rem !important;
+        margin-bottom: 0.25rem !important;
+        margin-right: 0 !important;
+    }
+    
+    #employee-report-replies-list .alert strong {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+    }
+    
+    #employee-report-replies-list .alert .btn {
+        font-size: 0.7rem !important;
+        padding: 0.3rem 0.6rem !important;
+        margin-top: 0.5rem !important;
+        width: 100% !important;
+    }
+    
+    /* Reducir padding del card-body en estas secciones */
+    #reports-list,
+    #admin-notifications-list,
+    #employee-notifications-list,
+    #employee-report-replies-list {
+        padding: 0.75rem !important;
+    }
+    
+    /* Hacer los mensajes de "no hay datos" más compactos */
+    #reports-list p,
+    #admin-notifications-list p,
+    #employee-notifications-list p,
+    #employee-report-replies-list p {
+        font-size: 0.85rem !important;
+        padding: 0.5rem !important;
+        margin: 0 !important;
+    }
+    
+    /* Hacer que el texto dentro de las alertas sea más compacto */
+    #reports-list .alert > div,
+    #admin-notifications-list .alert > div,
+    #employee-notifications-list .alert > div,
+    #employee-report-replies-list .alert > div {
+        line-height: 1.4 !important;
+    }
+    
+    /* Reducir el tamaño de los botones de Google Maps en móvil */
+    #admin-notifications-list .btn-google-maps {
+        font-size: 0.7rem !important;
+        padding: 0.3rem 0.5rem !important;
+        margin-top: 0.5rem !important;
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    
+    /* Asegurar que los elementos se apilen verticalmente en móvil */
+    #reports-list .alert .d-flex.justify-content-between {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+    
+    #admin-notifications-list .alert .d-flex.justify-content-between {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+    
+    #employee-notifications-list .alert .d-flex.justify-content-between {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+    
+    #employee-report-replies-list .alert .d-flex.justify-content-between {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
 }
 
 /* ===== ANIMACIONES SUAVES ===== */

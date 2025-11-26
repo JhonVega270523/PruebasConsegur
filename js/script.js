@@ -3159,14 +3159,11 @@ function togglePhotoAndSignatureSections(status, forTechnicianView = false) {
     const photoSection = document.getElementById('photo-evidence-section');
     const clientSignatureSection = document.getElementById('client-signature-section');
     const technicianSignatureSection = document.getElementById('technician-signature-section');
-    // Campo de técnico eliminado - ya no se usa
-    // const technicianField = document.getElementById('service-technician-field');
 
     // Always hide by default
     photoSection.classList.add('d-none');
     clientSignatureSection.classList.add('d-none');
     technicianSignatureSection.classList.add('d-none');
-    // technicianField.classList.add('d-none'); // Don't hide for admin when opening existing service
 
     // Clear signatures/photo input when toggling sections for new state/edit
     if (signaturePadClient) signaturePadClient.clear();
@@ -3181,24 +3178,15 @@ function togglePhotoAndSignatureSections(status, forTechnicianView = false) {
             clientSignatureSection.classList.remove('d-none');
             technicianSignatureSection.classList.remove('d-none');
         }
-        technicianField.classList.add('d-none'); // Technician cannot change assigned technician
     } else { // Logic for Admin Dashboard
         // Admin can register new service (no fields initially shown), or edit existing.
         // For admin, if they are editing a service that is 'Finalizado' or 'Cancelado',
-        // show relevant sections and technician field.
+        // show relevant sections.
         if (status === 'Finalizado' || status === 'Cancelado') {
             photoSection.classList.remove('d-none');
             clientSignatureSection.classList.remove('d-none');
             technicianSignatureSection.classList.remove('d-none');
-            // The technician field should always be visible for admin if there's a technician assigned
-            // or if it's a new service being created (so they can assign)
-            technicianField.classList.remove('d-none');
         }
-         // Also show technician field for admin when creating/editing other states
-         const serviceId = document.getElementById('edit-service-id').value;
-         if (!serviceId || (serviceId && services.find(s => s.id === serviceId))) {
-             technicianField.classList.remove('d-none');
-         }
     }
 }
 
@@ -5194,41 +5182,63 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
                 window.globalGeolocation = new EnhancedGeolocation();
             }
             
-            // Mostrar mensaje de carga
-            showAlert('🌍 Obteniendo ubicación para cambio de estado...\n\nPor favor espera mientras obtenemos tu ubicación GPS.');
+            // Función auxiliar para obtener ubicación y guardar
+            const getLocationAndSave = () => {
+                // Mostrar mensaje de carga
+                showAlert('🌍 Obteniendo ubicación para cambio de estado...\n\nPor favor espera mientras obtenemos tu ubicación GPS.');
+                
+                window.globalGeolocation.getQuickLocation(
+                    (locationData) => {
+                        // Éxito: ubicación obtenida
+                        oldService.finalizationOrCancellationTime = locationData.timestamp;
+                        oldService.finalizationOrCancellationLocation = {
+                            latitude: locationData.latitude,
+                            longitude: locationData.longitude,
+                            accuracy: locationData.accuracy,
+                            timestamp: locationData.timestamp,
+                            altitude: locationData.altitude,
+                            heading: locationData.heading,
+                            speed: locationData.speed,
+                            altitudeAccuracy: locationData.altitudeAccuracy,
+                            browser: locationData.browser,
+                            deviceInfo: locationData.deviceInfo,
+                            context: locationData.context
+                        };
+                        
+                        saveAndNotify();
+                    },
+                    (error) => {
+                        // Error: mostrar mensaje específico
+                        showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
+                    },
+                    'cambio_estado'
+                );
+            };
             
-            window.globalGeolocation.getQuickLocation(
-                (locationData) => {
-                    // Éxito: ubicación obtenida
-                    oldService.finalizationOrCancellationTime = locationData.timestamp;
-                    oldService.finalizationOrCancellationLocation = {
-                        latitude: locationData.latitude,
-                        longitude: locationData.longitude,
-                        accuracy: locationData.accuracy,
-                        timestamp: locationData.timestamp,
-                        altitude: locationData.altitude,
-                        heading: locationData.heading,
-                        speed: locationData.speed,
-                        altitudeAccuracy: locationData.altitudeAccuracy,
-                        browser: locationData.browser,
-                        deviceInfo: locationData.deviceInfo,
-                        context: locationData.context
-                    };
-                    
-                    // Cerrar el modal de finalización si está abierto
-                    const finalizationModal = bootstrap.Modal.getInstance(document.getElementById('registerServiceModal'));
-                    if (finalizationModal) {
-                        finalizationModal.hide();
-                    }
-                    
-                    saveAndNotify();
-                },
-                (error) => {
-                    // Error: mostrar mensaje específico
-                    showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
-                },
-                'cambio_estado'
-            );
+            // Cerrar el modal de finalización antes de obtener la ubicación (importante para móvil)
+            const finalizationModal = bootstrap.Modal.getInstance(document.getElementById('registerServiceModal'));
+            if (finalizationModal) {
+                finalizationModal.hide();
+                // Esperar a que el modal se cierre completamente antes de continuar (especialmente importante en móvil)
+                const modalElement = document.getElementById('registerServiceModal');
+                if (modalElement) {
+                    modalElement.addEventListener('hidden.bs.modal', function onModalHidden() {
+                        modalElement.removeEventListener('hidden.bs.modal', onModalHidden);
+                        // Esperar un pequeño delay para asegurar que el modal se cerró completamente
+                        setTimeout(() => {
+                            getLocationAndSave();
+                        }, 300);
+                    }, { once: true });
+                } else {
+                    // Si no hay elemento modal, proceder directamente después de un pequeño delay
+                    setTimeout(() => {
+                        getLocationAndSave();
+                    }, 300);
+                }
+            } else {
+                // Si no hay modal que cerrar, proceder directamente
+                getLocationAndSave();
+            }
         } else {
             saveAndNotify();
         }
@@ -7975,13 +7985,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const createCostoServicioModalElement = document.getElementById('createCostoServicioModal');
     if (createCostoServicioModalElement) {
         createCostoServicioModalElement.addEventListener('hidden.bs.modal', () => {
-            document.getElementById('costo-servicio-form').reset();
-            document.getElementById('edit-costo-servicio-id').value = '';
-            document.getElementById('costo-servicio-codigo').value = '';
-            document.getElementById('costo-servicio-tipo').value = '';
-            document.getElementById('costo-servicio-otro-tipo').value = '';
-            document.getElementById('costo-servicio-descripcion').value = '';
-            document.getElementById('costo-servicio-precio').value = '';
+            const form = document.getElementById('costo-servicio-form');
+            if (form) form.reset();
+            const editId = document.getElementById('edit-costo-servicio-id');
+            if (editId) editId.value = '';
+            const codigo = document.getElementById('costo-servicio-codigo');
+            if (codigo) codigo.value = '';
+            const tipo = document.getElementById('costo-servicio-tipo');
+            if (tipo) tipo.value = '';
+            const descripcion = document.getElementById('costo-servicio-descripcion');
+            if (descripcion) descripcion.value = '';
+            const precio = document.getElementById('costo-servicio-precio');
+            if (precio) precio.value = '';
         });
     }
 
@@ -8516,11 +8531,22 @@ document.addEventListener('DOMContentLoaded', function() {
         function openDatePicker() {
             serviceDateInput.type = 'date';
             // Usar showPicker si está disponible (navegadores modernos)
-            if (serviceDateInput.showPicker) {
-                serviceDateInput.showPicker().catch(() => {
-                    // Si showPicker falla, usar focus
+            if (serviceDateInput.showPicker && typeof serviceDateInput.showPicker === 'function') {
+                try {
+                    const pickerPromise = serviceDateInput.showPicker();
+                    // Verificar si retorna una promesa antes de llamar a catch
+                    if (pickerPromise && typeof pickerPromise.catch === 'function') {
+                        pickerPromise.catch(() => {
+                            // Si showPicker falla, usar focus
+                            serviceDateInput.focus();
+                        });
+                    } else {
+                        serviceDateInput.focus();
+                    }
+                } catch (error) {
+                    // Si showPicker lanza un error, usar focus
                     serviceDateInput.focus();
-                });
+                }
             } else {
                 serviceDateInput.focus();
             }
@@ -8577,11 +8603,22 @@ document.addEventListener('DOMContentLoaded', function() {
         function openTimePicker() {
             serviceTimeInput.type = 'time';
             // Usar showPicker si está disponible (navegadores modernos)
-            if (serviceTimeInput.showPicker) {
-                serviceTimeInput.showPicker().catch(() => {
-                    // Si showPicker falla, usar focus
+            if (serviceTimeInput.showPicker && typeof serviceTimeInput.showPicker === 'function') {
+                try {
+                    const pickerPromise = serviceTimeInput.showPicker();
+                    // Verificar si retorna una promesa antes de llamar a catch
+                    if (pickerPromise && typeof pickerPromise.catch === 'function') {
+                        pickerPromise.catch(() => {
+                            // Si showPicker falla, usar focus
+                            serviceTimeInput.focus();
+                        });
+                    } else {
+                        serviceTimeInput.focus();
+                    }
+                } catch (error) {
+                    // Si showPicker lanza un error, usar focus
                     serviceTimeInput.focus();
-                });
+                }
             } else {
                 serviceTimeInput.focus();
             }
