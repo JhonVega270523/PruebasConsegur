@@ -1,59 +1,38 @@
+
 // Global variables for managing state and data
 let currentUser = null;
+let users = JSON.parse(localStorage.getItem('users')) || [];
 
-// Función para cargar datos de manera segura
-function loadDataSafely(key, defaultValue = []) {
-    try {
-        const data = localStorage.getItem(key);
-        if (data) {
-            const parsed = JSON.parse(data);
-            if (Array.isArray(parsed)) {
-                return parsed;
-            } else {
-                console.warn(`⚠️ ${key} no es un array, usando valor por defecto`);
-                return defaultValue;
-            }
-        }
-        return defaultValue;
-    } catch (error) {
-        console.error(`❌ Error al cargar ${key}:`, error);
-        return defaultValue;
-    }
-}
+// Cargar todos los datos desde localStorage
+let clients = JSON.parse(localStorage.getItem('clients')) || [];
+let services = JSON.parse(localStorage.getItem('services')) || [];
+let reports = JSON.parse(localStorage.getItem('reports')) || [];
+let notifications = JSON.parse(localStorage.getItem('notifications')) || [];
+let costoServicios = JSON.parse(localStorage.getItem('costoServicios')) || [];
+let remisiones = JSON.parse(localStorage.getItem('remisiones')) || [];
 
-// Cargar datos de manera segura
-let users = loadDataSafely('users', []);
-let services = loadDataSafely('services', []);
-let reports = loadDataSafely('reports', []);
-let notifications = loadDataSafely('notifications', []);
-let costoServicios = loadDataSafely('costoServicios', []);
-let remisiones = loadDataSafely('remisiones', []);
-
-console.log('📊 Datos cargados:', {
-    users: users.length,
-    services: services.length,
-    reports: reports.length,
-    notifications: notifications.length,
-    costoServicios: costoServicios.length,
-    remisiones: remisiones.length
-});
-
-// Debug: Verificar carga de datos de costo servicios
-console.log('📊 Datos de costo servicios cargados:', costoServicios);
 let currentTheme = localStorage.getItem('theme') || 'light'; // Tema actual
 let currentEmployeeServicesFilter = 'todos'; // Filtro actual para servicios del técnico
 
-// Contadores para IDs únicos
+// Contadores para IDs únicos (cargados desde localStorage)
 let serviceCounter = parseInt(localStorage.getItem('serviceCounter')) || 0;
 let reportCounter = parseInt(localStorage.getItem('reportCounter')) || 0;
 let remisionCounter = parseInt(localStorage.getItem('remisionCounter')) || 0;
+let userCounter = parseInt(localStorage.getItem('userCounter')) || 0;
 
-// Sistema de debugging para IDs
-let debugMode = true; // Cambiar a false en producción
 
-function debugLog(message, data = null) {
-    if (debugMode) {
-        console.log(`[DEBUG] ${message}`, data || '');
+// Inicializar contador de usuarios basado en usuarios existentes
+if (users.length > 0) {
+    const maxUserNumber = users.reduce((max, user) => {
+        if (user.id && user.id.startsWith('user')) {
+            const num = parseInt(user.id.replace('user', ''));
+            return num > max ? num : max;
+        }
+        return max;
+    }, 0);
+    if (maxUserNumber > userCounter) {
+        userCounter = maxUserNumber;
+        localStorage.setItem('userCounter', userCounter.toString());
     }
 }
 
@@ -61,44 +40,62 @@ function debugLog(message, data = null) {
 if (users.length === 0) {
     users = [
         {
-            id: generateId(),
-            username: 'admin',
-            password: '12345',
-            role: 'admin'
+            id: generateUserId(),
+            username: 'Jhon',
+            password: 'Admin123', // Contraseña que cumple con los requisitos
+            role: 'admin',
+            createdAt: new Date().toISOString()
         }
     ];
     localStorage.setItem('users', JSON.stringify(users));
-    console.log('Usuario administrador por defecto creado:', users[0]);
+} else {
+    // Verificar si el usuario Jhon existe, si no, crearlo. Si existe, actualizar su contraseña
+    const jhonUser = users.find(u => u.username === 'Jhon');
+    if (!jhonUser) {
+        users.push({
+            id: generateUserId(),
+            username: 'Jhon',
+            password: 'Admin123', // Contraseña que cumple con los requisitos
+            role: 'admin',
+            createdAt: new Date().toISOString()
+        });
+        saveUsers();
+    } else {
+        // Actualizar la contraseña del usuario Jhon para que cumpla con los requisitos
+        // Solo si la contraseña actual no cumple los requisitos
+        const passwordValidation = validatePassword(jhonUser.password);
+        if (!passwordValidation.isValid || jhonUser.password !== 'Admin123') {
+            jhonUser.password = 'Admin123';
+            jhonUser.role = 'admin'; // Asegurar que sea administrador
+            saveUsers();
+        }
+    }
+    // Migrar usuarios existentes para agregar createdAt si no lo tienen
+    let needsUpdate = false;
+    users.forEach(user => {
+        if (!user.createdAt) {
+            user.createdAt = new Date().toISOString();
+            needsUpdate = true;
+        }
+        // Migrar IDs antiguos al nuevo formato
+        if (!user.id.startsWith('user')) {
+            const oldId = user.id;
+            user.id = generateUserId();
+            // Actualizar referencias en servicios
+            services.forEach(service => {
+                if (service.technicianId === oldId) {
+                    service.technicianId = user.id;
+                }
+            });
+            needsUpdate = true;
+        }
+    });
+    if (needsUpdate) {
+        saveUsers();
+        saveServices();
+    }
 }
 
-// Crear algunos servicios de costo por defecto si no existen
-if (costoServicios.length === 0) {
-    costoServicios = [
-        {
-            id: generateId(),
-            codigo: 'CS001',
-            tipo: 'Bovedas y cajas fuertes de seguridad',
-            descripcion: 'Instalación de caja fuerte residencial',
-            precio: 150000
-        },
-        {
-            id: generateId(),
-            codigo: 'CS002',
-            tipo: 'Puertas de seguridad',
-            descripcion: 'Instalación de puerta blindada',
-            precio: 250000
-        },
-        {
-            id: generateId(),
-            codigo: 'CS003',
-            tipo: 'Pasatulas o tombolas',
-            descripcion: 'Mantenimiento de cerradura electrónica',
-            precio: 80000
-        }
-    ];
-    localStorage.setItem('costoServicios', JSON.stringify(costoServicios));
-    console.log('Servicios de costo por defecto creados:', costoServicios);
-}
 
 // Migrar servicios existentes al nuevo formato de IDs
 function migrateExistingIds() {
@@ -108,9 +105,10 @@ function migrateExistingIds() {
     services.forEach(service => {
         if (!service.id.startsWith('S')) {
             const oldId = service.id;
-            service.id = generateServiceId();
+            // Obtener el consecutivo del cliente para mantener la consistencia
+            const clientConsecutive = service.clientName ? getClientConsecutiveByName(service.clientName) : 'SERV';
+            service.id = generateServiceId(clientConsecutive);
             needsMigration = true;
-            debugLog(`Servicio migrado: ${oldId} → ${service.id}`);
         }
     });
     
@@ -120,14 +118,12 @@ function migrateExistingIds() {
             const oldId = report.id;
             report.id = generateReportId();
             needsMigration = true;
-            debugLog(`Reporte migrado: ${oldId} → ${report.id}`);
         }
     });
     
     if (needsMigration) {
         saveServices();
         saveReports();
-        debugLog('IDs migrados al nuevo formato');
     }
 }
 
@@ -145,7 +141,6 @@ function initializeCounters() {
                 return match ? parseInt(match[1]) : 0;
             }));
             serviceCounter = Math.max(serviceCounter, maxServiceNumber);
-            debugLog(`Contador de servicios inicializado: ${serviceCounter}`);
         }
     }
     
@@ -158,7 +153,6 @@ function initializeCounters() {
                 return match ? parseInt(match[1]) : 0;
             }));
             reportCounter = Math.max(reportCounter, maxReportNumber);
-            debugLog(`Contador de reportes inicializado: ${reportCounter}`);
         }
     }
     
@@ -172,16 +166,15 @@ initializeCounters();
 
 // Forzar migración y reinicio de contadores si es necesario
 function forceMigrationAndReset() {
-    debugLog('Forzando migración y reinicio de contadores...');
-    
     // Migrar todos los servicios que no tengan formato S001
     let servicesMigrated = false;
     services.forEach(service => {
         if (!service.id.startsWith('S')) {
             const oldId = service.id;
-            service.id = generateServiceId();
+            // Obtener el consecutivo del cliente para mantener la consistencia
+            const clientConsecutive = service.clientName ? getClientConsecutiveByName(service.clientName) : 'SERV';
+            service.id = generateServiceId(clientConsecutive);
             servicesMigrated = true;
-            debugLog(`Servicio migrado: ${oldId} → ${service.id}`);
         }
     });
     
@@ -192,14 +185,12 @@ function forceMigrationAndReset() {
             const oldId = report.id;
             report.id = generateReportId();
             reportsMigrated = true;
-            debugLog(`Reporte migrado: ${oldId} → ${report.id}`);
         }
     });
     
     if (servicesMigrated || reportsMigrated) {
         saveServices();
         saveReports();
-        debugLog('Migración forzada completada');
     }
     
     // Reiniciar contadores basándose en los datos migrados
@@ -211,7 +202,6 @@ function forceMigrationAndReset() {
                 return match ? parseInt(match[1]) : 0;
             }));
             serviceCounter = maxServiceNumber;
-            debugLog(`Contador de servicios reiniciado: ${serviceCounter}`);
         }
     }
     
@@ -223,7 +213,6 @@ function forceMigrationAndReset() {
                 return match ? parseInt(match[1]) : 0;
             }));
             reportCounter = maxReportNumber;
-            debugLog(`Contador de reportes reiniciado: ${reportCounter}`);
         }
     }
     
@@ -236,8 +225,6 @@ forceMigrationAndReset();
 
 // Verificar y corregir IDs existentes
 function ensureCorrectIds() {
-    debugLog('Verificando y corrigiendo IDs...');
-    
     // Recargar datos del localStorage
     services = JSON.parse(localStorage.getItem('services')) || [];
     reports = JSON.parse(localStorage.getItem('reports')) || [];
@@ -246,11 +233,14 @@ function ensureCorrectIds() {
     
     // Verificar servicios
     services.forEach(service => {
-        if (!service.id || !service.id.startsWith('S') || !/^S\d{3}$/.test(service.id)) {
+        // Verificar si el ID tiene un formato válido (letras + números)
+        const isValidFormat = service.id && /^[A-Z]+\d{3,}$/.test(service.id);
+        if (!service.id || (!isValidFormat && (!service.id.startsWith('S') || !/^S\d{3}$/.test(service.id)))) {
             const oldId = service.id;
-            service.id = generateServiceId();
+            // Obtener el consecutivo del cliente para mantener la consistencia
+            const clientConsecutive = service.clientName ? getClientConsecutiveByName(service.clientName) : 'SERV';
+            service.id = generateServiceId(clientConsecutive);
             needsUpdate = true;
-            debugLog(`Servicio corregido: ${oldId} → ${service.id}`);
         }
     });
     
@@ -260,14 +250,12 @@ function ensureCorrectIds() {
             const oldId = report.id;
             report.id = generateReportId();
             needsUpdate = true;
-            debugLog(`Reporte corregido: ${oldId} → ${report.id}`);
         }
     });
     
     if (needsUpdate) {
         saveServices();
         saveReports();
-        debugLog('IDs corregidos y guardados');
     }
     
     // Actualizar contadores basándose en los datos corregidos
@@ -279,7 +267,6 @@ function ensureCorrectIds() {
                 return match ? parseInt(match[1]) : 0;
             }));
             serviceCounter = Math.max(serviceCounter, maxServiceNumber);
-            debugLog(`Contador de servicios actualizado: ${serviceCounter}`);
         }
     }
     
@@ -291,7 +278,6 @@ function ensureCorrectIds() {
                 return match ? parseInt(match[1]) : 0;
             }));
             reportCounter = Math.max(reportCounter, maxReportNumber);
-            debugLog(`Contador de reportes actualizado: ${reportCounter}`);
         }
     }
     
@@ -301,20 +287,16 @@ function ensureCorrectIds() {
 
 // Validar y corregir IDs antes de crear nuevos elementos
 function validateAndCorrectIds() {
-    debugLog('Validando IDs antes de crear nuevos elementos...');
-    
     // Sincronizar contadores con localStorage
     const currentServiceCounter = parseInt(localStorage.getItem('serviceCounter')) || 0;
     const currentReportCounter = parseInt(localStorage.getItem('reportCounter')) || 0;
     
     if (currentServiceCounter !== serviceCounter) {
         serviceCounter = currentServiceCounter;
-        debugLog(`Contador de servicios sincronizado: ${serviceCounter}`);
     }
     
     if (currentReportCounter !== reportCounter) {
         reportCounter = currentReportCounter;
-        debugLog(`Contador de reportes sincronizado: ${reportCounter}`);
     }
     
     // Verificar que no haya IDs duplicados o incorrectos
@@ -325,11 +307,9 @@ function validateAndCorrectIds() {
     const duplicateReportIds = reportIds.filter((id, index) => reportIds.indexOf(id) !== index);
     
     if (duplicateServiceIds.length > 0) {
-        debugLog(`IDs de servicios duplicados detectados: ${duplicateServiceIds.join(', ')}`);
     }
     
     if (duplicateReportIds.length > 0) {
-        debugLog(`IDs de reportes duplicados detectados: ${duplicateReportIds.join(', ')}`);
     }
     
     // Verificar formato de IDs
@@ -337,17 +317,14 @@ function validateAndCorrectIds() {
     const invalidReportIds = reportIds.filter(id => !/^R\d{3}$/.test(id));
     
     if (invalidServiceIds.length > 0) {
-        debugLog(`IDs de servicios con formato incorrecto: ${invalidServiceIds.join(', ')}`);
     }
     
     if (invalidReportIds.length > 0) {
-        debugLog(`IDs de reportes con formato incorrecto: ${invalidReportIds.join(', ')}`);
     }
 }
 
 // Ejecutar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
-    debugLog('DOM cargado, verificando IDs...');
     ensureCorrectIds();
 });
 
@@ -383,21 +360,16 @@ function generatePaginationControls(currentPage, totalPages, containerId, onPage
     if (totalPages <= 1) return;
     
     const paginationContainer = document.createElement('div');
-    paginationContainer.className = 'd-flex justify-content-between align-items-center mt-3';
+    paginationContainer.className = 'd-flex justify-content-center align-items-center mt-3';
     
-    // Información de página
-    const pageInfo = document.createElement('div');
-    pageInfo.className = 'text-muted';
-    pageInfo.innerHTML = `Página ${currentPage} de ${totalPages}`;
-    
-    // Controles de navegación
+    // Controles de navegación (centrados)
     const navContainer = document.createElement('div');
-    navContainer.className = 'd-flex gap-2';
+    navContainer.className = 'd-flex gap-2 align-items-center';
     
     // Botón anterior
     const prevButton = document.createElement('button');
     prevButton.className = `btn btn-outline-primary btn-sm ${currentPage === 1 ? 'disabled' : ''}`;
-    prevButton.innerHTML = '<i class="bi bi-chevron-left"></i> Anterior';
+    prevButton.innerHTML = '‹ ANTERIOR';
     prevButton.onclick = () => {
         if (currentPage > 1) {
             onPageChange(currentPage - 1);
@@ -427,7 +399,7 @@ function generatePaginationControls(currentPage, totalPages, containerId, onPage
     // Botón siguiente
     const nextButton = document.createElement('button');
     nextButton.className = `btn btn-outline-primary btn-sm ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextButton.innerHTML = 'Siguiente <i class="bi bi-chevron-right"></i>';
+    nextButton.innerHTML = 'SIGUIENTE ›';
     nextButton.onclick = () => {
         if (currentPage < totalPages) {
             onPageChange(currentPage + 1);
@@ -438,7 +410,6 @@ function generatePaginationControls(currentPage, totalPages, containerId, onPage
     navContainer.appendChild(pageButtonsContainer);
     navContainer.appendChild(nextButton);
     
-    paginationContainer.appendChild(pageInfo);
     paginationContainer.appendChild(navContainer);
     container.appendChild(paginationContainer);
 }
@@ -493,11 +464,60 @@ function generateId() {
     return '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// Función para generar ID único de servicio (S001, S002, etc.)
-function generateServiceId() {
-    serviceCounter++;
-    localStorage.setItem('serviceCounter', serviceCounter.toString());
-    return 'S' + serviceCounter.toString().padStart(3, '0');
+// Función para generar ID único de usuario (user001, user002, etc.)
+function generateUserId() {
+    userCounter++;
+    localStorage.setItem('userCounter', userCounter.toString());
+    return 'user' + userCounter.toString().padStart(3, '0');
+}
+
+// Función para obtener el consecutivo del cliente por nombre
+function getClientConsecutiveByName(clientName) {
+    if (!clientName) return 'SERV'; // Consecutivo por defecto si no hay cliente
+    const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+    if (client && client.consecutive) {
+        return client.consecutive.toUpperCase();
+    }
+    // Si no se encuentra el cliente o no tiene consecutivo, generar uno desde el nombre
+    return generateClientConsecutive(clientName);
+}
+
+// Función para generar ID único de servicio basado en el consecutivo del cliente
+// El número es global para todos los servicios, independientemente del prefijo
+function generateServiceId(clientConsecutive) {
+    // Si no se proporciona consecutivo, usar 'SERV' como predeterminado
+    const prefix = clientConsecutive || 'SERV';
+    
+    // Recargar servicios para asegurar que tenemos los datos más actualizados
+    services = JSON.parse(localStorage.getItem('services')) || [];
+    
+    // Extraer todos los números de los IDs de servicios existentes
+    // Los IDs pueden tener formato: BANC001, FLAM002, SERV003, etc.
+    const serviceNumbers = services
+        .map(service => {
+            if (!service.id) return null;
+            // Buscar el patrón: letras seguidas de números
+            const match = service.id.match(/^([A-Z]+)(\d+)$/);
+            if (match) {
+                return parseInt(match[2]);
+            }
+            // Si el ID tiene formato antiguo (S001, S002, etc.), también extraerlo
+            const oldMatch = service.id.match(/^S(\d+)$/);
+            if (oldMatch) {
+                return parseInt(oldMatch[1]);
+            }
+            return null;
+        })
+        .filter(num => num !== null);
+    
+    // Encontrar el número más alto
+    const maxNumber = serviceNumbers.length > 0 ? Math.max(...serviceNumbers) : 0;
+    
+    // Generar el siguiente número
+    const nextNumber = maxNumber + 1;
+    
+    // Formatear con el prefijo del consecutivo del cliente
+    return prefix.toUpperCase() + nextNumber.toString().padStart(3, '0');
 }
 
 // Función para generar ID único de reporte (R001, R002, etc.)
@@ -549,97 +569,180 @@ function toggleOtroTipo() {
     }
 }
 
-// Función de prueba para verificar datos de costo servicios
-function testCostoServiciosData() {
-    console.log('🧪 Prueba de datos de costo servicios:');
-    console.log('📊 Variable costoServicios:', costoServicios);
-    console.log('💾 localStorage costoServicios:', JSON.parse(localStorage.getItem('costoServicios') || '[]'));
-    console.log('🔍 Elementos del DOM:');
-    console.log('- edit-costo-servicio-id:', document.getElementById('edit-costo-servicio-id'));
-    console.log('- costo-servicio-codigo:', document.getElementById('costo-servicio-codigo'));
-    console.log('- costo-servicio-tipo:', document.getElementById('costo-servicio-tipo'));
-    console.log('- costo-servicio-descripcion:', document.getElementById('costo-servicio-descripcion'));
-    console.log('- costo-servicio-precio:', document.getElementById('costo-servicio-precio'));
-    console.log('- createCostoServicioModal:', document.getElementById('createCostoServicioModal'));
-}
-
 // Función para forzar la carga de datos en el modal de costo servicios
 function forceLoadDataInModal(servicio) {
-    console.log('🔄 Forzando carga de datos en modal de costo servicios:', servicio);
-    
-    // Cargar datos directamente
     document.getElementById('edit-costo-servicio-id').value = servicio.id;
     document.getElementById('costo-servicio-codigo').value = servicio.codigo || '';
+    document.getElementById('costo-servicio-tipo').value = servicio.tipo || '';
     document.getElementById('costo-servicio-descripcion').value = servicio.descripcion || '';
     document.getElementById('costo-servicio-precio').value = servicio.precio || '';
-    
-    // Configurar el campo de código como solo lectura
-    document.getElementById('costo-servicio-codigo').readOnly = true;
-    document.getElementById('costo-servicio-codigo').style.backgroundColor = '#f8f9fa';
-    
-    // Manejar el tipo de servicio
-    const tipoSelect = document.getElementById('costo-servicio-tipo');
-    const otroInput = document.getElementById('costo-servicio-otro-tipo');
-    const otroContainer = document.getElementById('otro-tipo-container');
-    
-    const opcionesPredefinidas = [
-        'Bovedas y cajas fuertes de seguridad',
-        'Puertas de seguridad',
-        'Pasatulas o tombolas'
-    ];
-    
-    if (opcionesPredefinidas.includes(servicio.tipo)) {
-        tipoSelect.value = servicio.tipo;
-        if (otroContainer) otroContainer.classList.add('d-none');
-        if (otroInput) otroInput.value = '';
-    } else {
-        tipoSelect.value = 'Otro';
-        if (otroContainer) otroContainer.classList.remove('d-none');
-        if (otroInput) otroInput.value = servicio.tipo || '';
-    }
-    
-    console.log('✅ Datos forzados en modal de costo servicios');
 }
 
 // Función para forzar la carga de datos en el modal de servicios
 function forceLoadServiceDataInModal(service) {
-    console.log('🔄 Forzando carga de datos en modal de servicios:', service);
-    
     try {
-        // Cargar datos básicos del servicio
         document.getElementById('edit-service-id').value = service.id;
-        document.getElementById('service-date').value = service.date;
+        
+        // Convertir fecha de formato ISO (YYYY-MM-DD) a formato dd/mm/yyyy para el input
+        let fechaFormateada = service.date || '';
+        if (fechaFormateada && fechaFormateada.trim() !== '') {
+            try {
+                // Si la fecha está en formato ISO (YYYY-MM-DD), convertirla a dd/mm/yyyy
+                if (/^\d{4}-\d{2}-\d{2}$/.test(fechaFormateada.trim())) {
+                    const [year, month, day] = fechaFormateada.trim().split('-');
+                    fechaFormateada = `${day}/${month}/${year}`;
+                } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaFormateada.trim())) {
+                    // Ya está en formato dd/mm/yyyy, mantenerla
+                    fechaFormateada = fechaFormateada.trim();
+                } else {
+                    // Intentar parsear como fecha y convertir
+                    const date = new Date(fechaFormateada);
+                    if (!isNaN(date.getTime())) {
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const year = date.getFullYear();
+                        fechaFormateada = `${day}/${month}/${year}`;
+                    } else {
+                        // Si no se puede parsear, intentar mantener el valor original
+                        fechaFormateada = fechaFormateada.trim();
+                    }
+                }
+            } catch (e) {
+                // Si hay error, intentar usar la fecha original si es válida
+                if (fechaFormateada && fechaFormateada.trim() !== '') {
+                    fechaFormateada = fechaFormateada.trim();
+                } else {
+                    fechaFormateada = '';
+                }
+            }
+        } else {
+            fechaFormateada = '';
+        }
+        
+        // Asegurar que el campo de fecha se establezca correctamente
+        const dateInput = document.getElementById('service-date');
+        if (dateInput) {
+            dateInput.value = fechaFormateada;
+            // Forzar actualización del valor para asegurar que se muestre
+            if (fechaFormateada) {
+                dateInput.setAttribute('value', fechaFormateada);
+            }
+        }
+        
+        // Cargar hora de servicio - buscar en time, hora, o formatear desde startTime
+        let horaServicio = service.time || service.hora || '';
+        
+        // Si la hora es un número (decimal de Excel), convertirla
+        if (typeof horaServicio === 'number') {
+            horaServicio = convertExcelTimeToHourFormat(horaServicio);
+        } else if (horaServicio) {
+            // Si es un string, asegurarse de que esté en formato de 12 horas
+            horaServicio = convertTo12HourFormat(horaServicio);
+        }
+        
+        // Si no hay hora y hay startTime, intentar formatear desde startTime
+        if (!horaServicio && service.startTime) {
+            try {
+                const startDate = new Date(service.startTime);
+                if (!isNaN(startDate.getTime())) {
+                    const hours = startDate.getHours();
+                    const minutes = String(startDate.getMinutes()).padStart(2, '0');
+                    const seconds = String(startDate.getSeconds()).padStart(2, '0');
+                    const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+                    const hours12 = hours % 12 || 12;
+                    horaServicio = `${String(hours12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+                }
+            } catch (e) {
+                // Si hay error, dejar vacío
+            }
+        }
+        
+        document.getElementById('service-time').value = horaServicio || '';
+        
         document.getElementById('service-code').value = service.serviceCode || '';
         document.getElementById('service-type').value = service.safeType || '';
         document.getElementById('service-description').value = service.description || '';
         document.getElementById('service-location').value = service.location || '';
         document.getElementById('service-client-name').value = service.clientName || '';
         document.getElementById('service-client-phone').value = service.clientPhone || '';
+        
+        // Cargar NIT/CC - buscar en clientNit, nit, o en el cliente asociado
+        let clientNit = service.clientNit || service.nit || '';
+        if (!clientNit && service.clientName) {
+            // Si no hay NIT en el servicio, buscar en el cliente
+            const client = clients.find(c => c.name === service.clientName);
+            if (client && client.nit) {
+                clientNit = client.nit;
+            }
+        }
+        document.getElementById('service-client-nit').value = clientNit;
+        
+        // Cargar EMAIL - buscar en clientEmail, email, o en el cliente asociado
+        let clientEmail = service.clientEmail || service.email || '';
+        if (!clientEmail && service.clientName) {
+            // Si no hay EMAIL en el servicio, buscar en el cliente
+            const client = clients.find(c => c.name === service.clientName);
+            if (client && client.email) {
+                clientEmail = client.email;
+            }
+        }
+        document.getElementById('service-client-email').value = clientEmail;
+        
         document.getElementById('service-status').value = service.status;
         
-        console.log('📝 Datos básicos cargados:', {
-            id: service.id,
-            date: service.date,
-            serviceCode: service.serviceCode,
-            safeType: service.safeType,
-            description: service.description,
-            location: service.location,
-            clientName: service.clientName,
-            clientPhone: service.clientPhone,
-            status: service.status
-        });
-        
-        // Manejar el campo de técnico
-        const technicianField = document.getElementById('service-technician-field');
-        if (service.technicianId || currentUser.role === 'admin') {
-            technicianField.classList.remove('d-none');
-            document.getElementById('service-technician').value = service.technicianId || '';
-        } else {
-            technicianField.classList.add('d-none');
-            document.getElementById('service-technician').value = '';
+        // Cargar cantidad del servicio
+        const quantityInput = document.getElementById('service-quantity');
+        if (quantityInput) {
+            quantityInput.value = service.quantity || 1;
         }
         
-        // Configurar secciones de foto y firmas
+        // Cargar servicios adicionales
+        const additionalServicesContainer = document.getElementById('additional-services-container');
+        if (additionalServicesContainer && service.additionalServices && Array.isArray(service.additionalServices) && service.additionalServices.length > 0) {
+            additionalServicesContainer.innerHTML = '';
+            service.additionalServices.forEach((additionalService, index) => {
+                const serviceIndex = index;
+                const additionalServiceDiv = document.createElement('div');
+                additionalServiceDiv.className = 'mb-3 p-3 border rounded bg-light';
+                additionalServiceDiv.setAttribute('data-service-index', serviceIndex);
+                const suggestionsId = `additional-service-suggestions-${serviceIndex}`;
+                additionalServiceDiv.innerHTML = `
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-3">
+                            <div class="service-code-selector">
+                                <label class="form-label fw-bold service-code-label">CÓDIGO DE SERVICIO ADICIONAL</label>
+                                <input type="text" class="form-control service-code-input additional-service-code" placeholder="Escribir para buscar código..." name="additional-service-code-${serviceIndex}" data-service-index="${serviceIndex}" value="${additionalService.code || ''}" oninput="searchAdditionalServiceCode(this)" onchange="loadAdditionalServiceDetails(this)" onblur="setTimeout(() => { const div = document.getElementById('${suggestionsId}'); if(div) div.style.display = 'none'; }, 200);">
+                                <div class="service-code-suggestions" id="${suggestionsId}" style="display: none;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">TIPO DE SERVICIO</label>
+                            <input type="text" class="form-control additional-service-type" placeholder="" name="additional-service-type-${serviceIndex}" value="${additionalService.type || ''}" readonly>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">CANTIDAD</label>
+                            <input type="number" class="form-control additional-service-quantity" placeholder="1" name="additional-service-quantity-${serviceIndex}" min="1" value="${additionalService.quantity || 1}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-10 mb-3">
+                            <label class="form-label fw-bold">DESCRIPCIÓN</label>
+                            <input type="text" class="form-control additional-service-description" placeholder="" name="additional-service-description-${serviceIndex}" value="${additionalService.description || ''}" readonly>
+                        </div>
+                        <div class="col-md-2 mb-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('.bg-light').remove()" style="text-decoration: none;">
+                                <i class="bi bi-trash me-1"></i> ELIMINAR
+                            </button>
+                        </div>
+                    </div>
+                `;
+                additionalServicesContainer.appendChild(additionalServiceDiv);
+            });
+        } else if (additionalServicesContainer) {
+            additionalServicesContainer.innerHTML = '';
+        }
+        
+        togglePhotoAndSignatureSections(service.status, currentUser.role === 'employee');
         togglePhotoAndSignatureSections(service.status, currentUser.role === 'employee');
         
         // Cargar foto si existe
@@ -684,13 +787,8 @@ function forceLoadServiceDataInModal(service) {
             clearSignaturePad('technician');
         }
         
-        // Cargar detalles del servicio
         loadServiceDetails();
-        
-        console.log('✅ Datos forzados en modal de servicios');
-        
     } catch (error) {
-        console.error('❌ Error al cargar datos del servicio en el modal:', error);
     }
 }
 
@@ -699,49 +797,12 @@ function saveUsers() {
     localStorage.setItem('users', JSON.stringify(users));
 }
 
+function saveClients() {
+    localStorage.setItem('clients', JSON.stringify(clients));
+}
+
 function saveServices() {
-    try {
-        console.log('🔄 Guardando servicios en localStorage...');
-        console.log('📊 Número de servicios a guardar:', services.length);
-        
-        // Verificar que services sea un array válido
-        if (!Array.isArray(services)) {
-            console.error('❌ services no es un array válido:', services);
-            throw new Error('Datos de servicios inválidos');
-        }
-        
-        // Verificar que localStorage esté disponible
-        if (typeof localStorage === 'undefined') {
-            console.error('❌ localStorage no está disponible');
-            throw new Error('Almacenamiento local no disponible');
-        }
-        
-        const servicesJson = JSON.stringify(services);
-        console.log('📝 JSON generado, tamaño:', servicesJson.length, 'caracteres');
-        
-        localStorage.setItem('services', servicesJson);
-        console.log('✅ Servicios guardados exitosamente en localStorage');
-        
-        // Verificar que se guardó correctamente
-        const savedData = localStorage.getItem('services');
-        if (!savedData) {
-            throw new Error('Los datos no se guardaron correctamente');
-        }
-        
-        console.log('✅ Verificación: datos guardados correctamente');
-        
-    } catch (error) {
-        console.error('❌ Error al guardar servicios:', error);
-        console.error('🔍 Tipo de error:', error.name);
-        console.error('🔍 Mensaje de error:', error.message);
-        
-        // Si es un error de quota, dar un mensaje más específico
-        if (error.name === 'QuotaExceededError') {
-            throw new Error('Espacio de almacenamiento insuficiente. Por favor, elimine algunos datos o use otro navegador.');
-        }
-        
-        throw new Error('Error al guardar los servicios. Por favor, intente nuevamente.');
-    }
+    localStorage.setItem('services', JSON.stringify(services));
 }
 
 function saveReports() {
@@ -751,6 +812,86 @@ function saveReports() {
 function saveNotifications() {
     localStorage.setItem('notifications', JSON.stringify(notifications));
 }
+
+// Función para eliminar 2 servicios finalizados y 2 notificaciones
+function deleteFinishedServicesAndNotifications() {
+    // Cargar servicios desde localStorage
+    let services = JSON.parse(localStorage.getItem('services')) || [];
+    
+    // Filtrar servicios finalizados
+    const finishedServices = services.filter(s => s.status === 'Finalizado');
+    
+    // Eliminar los primeros 2 servicios finalizados
+    if (finishedServices.length >= 2) {
+        const idsToRemove = finishedServices.slice(0, 2).map(s => s.id);
+        services = services.filter(s => !idsToRemove.includes(s.id));
+        localStorage.setItem('services', JSON.stringify(services));
+        
+        // Actualizar la variable global
+        window.services = services;
+    }
+    
+    // Cargar notificaciones desde localStorage
+    let notifications = JSON.parse(localStorage.getItem('notifications')) || [];
+    
+    // Eliminar las primeras 2 notificaciones
+    if (notifications.length >= 2) {
+        notifications = notifications.slice(2);
+        localStorage.setItem('notifications', JSON.stringify(notifications));
+        
+        // Actualizar la variable global
+        window.notifications = notifications;
+    }
+    
+    // Recargar la vista si está en el dashboard
+    if (typeof renderServices === 'function') {
+        renderServices();
+    }
+    if (typeof loadAdminNotifications === 'function') {
+        loadAdminNotifications();
+    }
+    if (typeof loadEmployeeNotifications === 'function') {
+        loadEmployeeNotifications();
+    }
+    
+    return {
+        servicesDeleted: Math.min(finishedServices.length, 2),
+        notificationsDeleted: Math.min(notifications.length, 2)
+    };
+}
+
+// Ejecutar automáticamente al cargar (solo una vez)
+(function() {
+    // Cargar servicios desde localStorage
+    let services = JSON.parse(localStorage.getItem('services')) || [];
+    
+    // Filtrar servicios finalizados
+    const finishedServices = services.filter(s => s.status === 'Finalizado');
+    
+    // Eliminar los primeros 2 servicios finalizados si existen
+    if (finishedServices.length >= 2) {
+        const idsToRemove = finishedServices.slice(0, 2).map(s => s.id);
+        services = services.filter(s => !idsToRemove.includes(s.id));
+        localStorage.setItem('services', JSON.stringify(services));
+        // Actualizar variable global si existe
+        if (typeof window !== 'undefined' && window.services) {
+            window.services = services;
+        }
+    }
+    
+    // Cargar notificaciones desde localStorage
+    let notifications = JSON.parse(localStorage.getItem('notifications')) || [];
+    
+    // Eliminar las primeras 2 notificaciones si existen
+    if (notifications.length >= 2) {
+        notifications = notifications.slice(2);
+        localStorage.setItem('notifications', JSON.stringify(notifications));
+        // Actualizar variable global si existe
+        if (typeof window !== 'undefined' && window.notifications) {
+            window.notifications = notifications;
+        }
+    }
+})();
 
 function saveCostoServicios() {
     localStorage.setItem('costoServicios', JSON.stringify(costoServicios));
@@ -762,19 +903,14 @@ function saveRemisiones() {
 
 // --- Reemplazo de Alerts y Confirms nativos ---
 function showAlert(message) {
-    console.log('showAlert llamado con mensaje:', message);
-    
     // Limpiar contenido anterior
     document.getElementById('customAlertModalBody').textContent = message;
     
     // Obtener o crear instancia del modal
     let alertModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
     if (!alertModal) {
-        console.log('Creando nueva instancia del modal');
         alertModal = new bootstrap.Modal(document.getElementById('customAlertModal'));
     }
-    
-    console.log('Mostrando modal de alerta');
     // Mostrar el modal
     alertModal.show();
 }
@@ -811,12 +947,113 @@ function showConfirm(message, callback) {
     confirmModal.show();
 }
 
+// --- Funciones para el modal de progreso ---
+let progressModalInstance = null;
+
+function initProgressModal(type, total) {
+    // Obtener o crear instancia del modal
+    progressModalInstance = bootstrap.Modal.getInstance(document.getElementById('progressModal'));
+    if (!progressModalInstance) {
+        progressModalInstance = new bootstrap.Modal(document.getElementById('progressModal'));
+    }
+    
+    // Configurar título y icono según el tipo
+    const titleEl = document.getElementById('progress-title');
+    const iconEl = document.getElementById('progress-icon');
+    const closeBtn = document.getElementById('progress-close-btn');
+    const doneBtn = document.getElementById('progress-done-btn');
+    const progressBar = document.getElementById('progress-bar');
+    
+    if (type === 'import') {
+        titleEl.textContent = 'Importando registros...';
+        iconEl.className = 'bi bi-upload me-2';
+        iconEl.style.fontSize = '1.2rem';
+    } else if (type === 'delete') {
+        titleEl.textContent = 'Eliminando registros...';
+        iconEl.className = 'bi bi-trash-fill me-2';
+        iconEl.style.fontSize = '1.2rem';
+    }
+    
+    // Resetear valores
+    updateProgress(0, total, 'Iniciando proceso...', 0, 0, 0);
+    
+    // Restaurar animación de la barra de progreso
+    progressBar.classList.add('progress-bar-animated');
+    
+    // Ocultar botones
+    closeBtn.classList.add('d-none');
+    doneBtn.style.display = 'none';
+    
+    // Mostrar el modal
+    progressModalInstance.show();
+}
+
+function updateProgress(current, total, message, successes, warnings, errors) {
+    const percentage = total > 0 ? Math.round((current / total) * 100) : 0;
+    
+    // Actualizar mensaje
+    document.getElementById('progress-message').textContent = message;
+    
+    // Actualizar barra de progreso
+    const progressBar = document.getElementById('progress-bar');
+    const progressPercentage = document.getElementById('progress-percentage');
+    progressBar.style.width = percentage + '%';
+    progressBar.setAttribute('aria-valuenow', percentage);
+    progressPercentage.textContent = percentage + '%';
+    
+    // Actualizar contadores
+    document.getElementById('progress-successes').textContent = successes;
+    document.getElementById('progress-warnings').textContent = warnings;
+    document.getElementById('progress-errors').textContent = errors;
+}
+
+function completeProgress(type, totalProcessed, message, successes, warnings, errors) {
+    const titleEl = document.getElementById('progress-title');
+    const iconEl = document.getElementById('progress-icon');
+    const closeBtn = document.getElementById('progress-close-btn');
+    const doneBtn = document.getElementById('progress-done-btn');
+    const progressBar = document.getElementById('progress-bar');
+    
+    // Cambiar título y icono
+    if (type === 'import') {
+        titleEl.textContent = 'Importación completada';
+    } else if (type === 'delete') {
+        titleEl.textContent = 'Eliminación completada';
+    }
+    
+    iconEl.className = 'bi bi-check-circle-fill me-2';
+    
+    // Completar barra de progreso
+    progressBar.style.width = '100%';
+    progressBar.classList.remove('progress-bar-animated');
+    document.getElementById('progress-percentage').textContent = '100%';
+    
+    // Mostrar mensaje final
+    const finalMessage = message || (type === 'import' 
+        ? `Importación completada. ${successes} registros importados.` 
+        : `Eliminación completada. ${successes} registros eliminados.`);
+    document.getElementById('progress-message').textContent = finalMessage;
+    
+    // Mostrar botones
+    closeBtn.classList.remove('d-none');
+    doneBtn.style.display = 'block';
+    
+    // Actualizar contadores finales
+    document.getElementById('progress-successes').textContent = successes;
+    document.getElementById('progress-warnings').textContent = warnings;
+    document.getElementById('progress-errors').textContent = errors;
+}
+
+function closeProgressModal() {
+    if (progressModalInstance) {
+        progressModalInstance.hide();
+    }
+}
+
 
 // --- UI Display Functions ---
 
 function showLogin() {
-    console.log('showLogin() ejecutándose');
-    
     // Mostrar login con múltiples métodos para asegurar que se muestre
     const loginSection = document.getElementById('login-section');
     loginSection.classList.remove('d-none');
@@ -857,15 +1094,10 @@ function showLogin() {
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
     updateNotificationBadges(); // Clear badges on logout
-    
-    console.log('Login mostrado correctamente');
 }
 
 function showAdminDashboard() {
-    console.log('showAdminDashboard() ejecutándose');
     if (currentUser && currentUser.role === 'admin') {
-        console.log('Ocultando login y mostrando admin dashboard');
-        
         // Cerrar el menú hamburguesa si está abierto
         const navbarCollapse = document.getElementById('navbarNav');
         if (navbarCollapse.classList.contains('show')) {
@@ -899,11 +1131,14 @@ function showAdminDashboard() {
         // Actualizar navegación
         document.getElementById('nav-login').classList.add('d-none');
         document.getElementById('nav-logout').classList.remove('d-none');
-        document.getElementById('nav-admin-dashboard').classList.remove('d-none');
+        const adminNavLink = document.getElementById('nav-admin-dashboard');
+        adminNavLink.classList.remove('d-none');
+        adminNavLink.textContent = currentUser.username; // Mostrar nombre del usuario
         document.getElementById('nav-employee-dashboard').classList.add('d-none');
         
         // Renderizar contenido
         renderUserList(1);
+        initializeClientsModule();
         fixExistingServices(); // Corregir servicios existentes
         renderAdminServicesList(services, 1);
         populateAssignServiceDropdown();
@@ -911,9 +1146,6 @@ function showAdminDashboard() {
         populateTechnicianDropdowns();
         renderAssignedServicesList(1);
         renderReportsList(1);
-        
-        // Forzar actualización de notificaciones
-        console.log('🔄 Cargando notificaciones de administrador...');
         renderAdminNotifications(1);
         updateNotificationBadges(); // Update badges for admin
         
@@ -922,8 +1154,6 @@ function showAdminDashboard() {
         
         // Limpiar todos los filtros al entrar al módulo de servicios
         clearFilters();
-        
-        console.log('Admin dashboard mostrado correctamente');
     } else {
         showAlert('Acceso denegado. Solo administradores.');
         showLogin();
@@ -942,10 +1172,7 @@ function setDefaultDateFilters() {
 }
 
 function showEmployeeDashboard() {
-    console.log('showEmployeeDashboard() ejecutándose');
     if (currentUser && currentUser.role === 'employee') {
-        console.log('Ocultando login y mostrando employee dashboard');
-        
         // Cerrar el menú hamburguesa si está abierto
         const navbarCollapse = document.getElementById('navbarNav');
         if (navbarCollapse.classList.contains('show')) {
@@ -980,7 +1207,9 @@ function showEmployeeDashboard() {
         document.getElementById('nav-login').classList.add('d-none');
         document.getElementById('nav-logout').classList.remove('d-none');
         document.getElementById('nav-admin-dashboard').classList.add('d-none');
-        document.getElementById('nav-employee-dashboard').classList.remove('d-none');
+        const employeeNavLink = document.getElementById('nav-employee-dashboard');
+        employeeNavLink.classList.remove('d-none');
+        employeeNavLink.textContent = currentUser.username; // Mostrar nombre del usuario
         
         // Renderizar contenido
         renderEmployeeAssignedServices(1);
@@ -988,8 +1217,6 @@ function showEmployeeDashboard() {
         renderEmployeeReportReplies(1);
         updateEmployeeFilterCounts(); // Actualizar contadores de filtros
         updateNotificationBadges(); // Update badges for employee
-        
-        console.log('Employee dashboard mostrado correctamente');
     } else {
         showAlert('Acceso denegado. Solo empleados.');
         showLogin();
@@ -1007,7 +1234,6 @@ function logout() {
     }
     
     showLogin();
-    //showAlert('Sesión cerrada.');
 }
 
 // --- Login Logic ---
@@ -1022,8 +1248,6 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
     if (user) {
         currentUser = user;
         loginError.textContent = '';
-        console.log('Login exitoso:', currentUser);
-        
         // Cerrar el menú hamburguesa si está abierto
         const navbarCollapse = document.getElementById('navbarNav');
         if (navbarCollapse.classList.contains('show')) {
@@ -1032,15 +1256,12 @@ document.getElementById('login-form').addEventListener('submit', (e) => {
         }
         
         if (currentUser.role === 'admin') {
-            console.log('Mostrando dashboard de administrador');
             showAdminDashboard();
         } else if (currentUser.role === 'employee') {
-            console.log('Mostrando dashboard de empleado');
             showEmployeeDashboard();
         }
     } else {
         loginError.textContent = 'Usuario o contraseña incorrectos.';
-        console.log('Login fallido');
     }
 });
 
@@ -1052,6 +1273,7 @@ let currentUserPage = 1;
 // Variables de paginación para servicios del admin
 let currentAdminServicesPage = 1;
 let currentAdminServicesData = [];
+let currentAdminServicesStatusFilter = 'todos'; // Filtro de estado para servicios admin
 
 // Variables de paginación para servicios asignados
 let currentAssignedServicesPage = 1;
@@ -1069,29 +1291,33 @@ let currentEmployeeReportRepliesPage = 1;
 // Variables de paginación para reportes
 let currentReportsPage = 1;
 
-function renderUserList(page = 1) {
+// Variables de paginación para costo servicios
+let currentCostoServiciosPage = 1;
+const ITEMS_PER_PAGE_COSTO_SERVICIOS = 15;
+
+// Variable para almacenar usuarios filtrados
+let filteredUsers = [];
+
+function renderUserList(page = 1, usersToRender = null) {
     currentUserPage = page;
     const userListElement = document.getElementById('user-list');
     const userCardsElement = document.getElementById('user-list-cards');
     const userTable = userListElement.closest('table');
-    const userTableHeader = userTable.querySelector('thead');
     
-    // Agregar encabezado de numeración si no existe
-    if (!userTableHeader.querySelector('th:first-child').innerHTML.includes('bi-hash')) {
-        addNumberHeader(userTableHeader);
-    }
+    // Usar usuarios filtrados o todos los usuarios
+    const usersToDisplay = usersToRender || filteredUsers.length > 0 ? filteredUsers : users;
     
     userListElement.innerHTML = '';
     userCardsElement.innerHTML = '';
     
-    const totalPages = getTotalPages(users.length);
-    const paginatedUsers = paginateArray(users, page);
+    const totalPages = getTotalPages(usersToDisplay.length);
+    const paginatedUsers = paginateArray(usersToDisplay, page);
     
     if (paginatedUsers.length === 0) {
         // Mensaje para tabla
         const noResultsRow = document.createElement('tr');
         noResultsRow.innerHTML = `
-            <td colspan="4" class="text-center text-muted py-4">
+            <td colspan="6" class="text-center text-muted py-4" style="text-align: center !important; vertical-align: middle;">
                 <i class="bi bi-people" style="font-size: 2rem;"></i>
                 <br><br>
                 <strong>No hay usuarios registrados</strong>
@@ -1109,15 +1335,40 @@ function renderUserList(page = 1) {
         `;
         userCardsElement.appendChild(noResultsCard);
     } else {
-        paginatedUsers.forEach(user => {
+        paginatedUsers.forEach((user, index) => {
+            // Formatear fecha de creación en formato colombiano (dd/mm/yyyy, hh:mm:ss a.m./p.m.)
+            let createdAt = 'N/A';
+            if (user.createdAt) {
+                const date = new Date(user.createdAt);
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                const hours = date.getHours();
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+                const hours12 = hours % 12 || 12;
+                createdAt = `${day}/${month}/${year}, ${String(hours12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+            }
+            
+            const rowNumber = (page - 1) * ITEMS_PER_PAGE + index + 1;
+            const roleText = user.role === 'admin' ? 'Administrador' : 'Técnico';
+            
             // Generar fila de tabla (vista desktop)
             const row = document.createElement('tr');
             row.innerHTML = `
+                <td>${rowNumber}</td>
+                <td>${user.id}</td>
                 <td>${user.username}</td>
-                <td>${user.role === 'admin' ? 'Administrador' : 'Técnico'}</td>
+                <td>${roleText}</td>
+                <td>${createdAt}</td>
                 <td>
-                    <button class="btn btn-warning btn-sm" onclick="editUser('${user.id}')">Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.id}')">Eliminar</button>
+                    <button class="btn btn-warning btn-sm me-1" onclick="editUser('${user.id}')" title="Editar">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.id}')" title="Eliminar">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
                 </td>
             `;
             userListElement.appendChild(row);
@@ -1127,23 +1378,27 @@ function renderUserList(page = 1) {
             userCard.className = 'user-card';
             
             const roleClass = user.role === 'admin' ? 'admin' : 'technician';
-            const roleText = user.role === 'admin' ? 'Administrador' : 'Técnico';
             
             userCard.innerHTML = `
                 <div class="user-card-header">
                     <span class="user-card-username">${user.username}</span>
                     <span class="user-card-role ${roleClass}">${roleText}</span>
                 </div>
+                <div class="user-card-info">
+                    <div><strong>ID:</strong> ${user.id}</div>
+                    <div><strong>Fecha de creación:</strong> ${createdAt}</div>
+                </div>
                 <div class="user-card-actions">
-                    <button class="btn btn-warning btn-sm" onclick="editUser('${user.id}')">Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.id}')">Eliminar</button>
+                    <button class="btn btn-warning btn-sm me-1" onclick="editUser('${user.id}')" title="Editar">
+                        <i class="bi bi-pencil-fill"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.id}')" title="Eliminar">
+                        <i class="bi bi-trash-fill"></i> Eliminar
+                    </button>
                 </div>
             `;
             userCardsElement.appendChild(userCard);
         });
-        
-        // Agregar numeración a las filas
-        addRowNumbers(userListElement, (page - 1) * ITEMS_PER_PAGE + 1);
     }
     
     // Generar controles de paginación
@@ -1158,8 +1413,118 @@ function renderUserList(page = 1) {
     paginationDiv.className = 'pagination-container';
     paginationContainer.appendChild(paginationDiv);
     
-    generatePaginationControls(page, totalPages, 'user-pagination', renderUserList);
+    generatePaginationControls(page, totalPages, 'user-pagination', (p) => renderUserList(p, usersToRender));
 }
+
+// Función para filtrar usuarios
+function filterUsers() {
+    const searchTerm = document.getElementById('search-users').value.toLowerCase().trim();
+    
+    if (!searchTerm) {
+        filteredUsers = [];
+        renderUserList(1);
+        return;
+    }
+    
+    filteredUsers = users.filter(user => {
+        const id = (user.id || '').toLowerCase();
+        const username = (user.username || '').toLowerCase();
+        const role = user.role === 'admin' ? 'administrador' : 'técnico';
+        const createdAt = user.createdAt ? new Date(user.createdAt).toLocaleString('es-CO').toLowerCase() : '';
+        
+        return id.includes(searchTerm) || 
+               username.includes(searchTerm) || 
+               role.includes(searchTerm) ||
+               createdAt.includes(searchTerm);
+    });
+    
+    renderUserList(1, filteredUsers);
+}
+
+// Función para limpiar búsqueda
+function clearUserSearch() {
+    document.getElementById('search-users').value = '';
+    filteredUsers = [];
+    renderUserList(1);
+}
+
+// Función para validar contraseña
+function validatePassword(password) {
+    const errors = [];
+    
+    if (password.length < 8) {
+        errors.push('La contraseña debe tener mínimo 8 caracteres');
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+        errors.push('La contraseña debe contener al menos 1 mayúscula');
+    }
+    
+    if (!/[a-z]/.test(password)) {
+        errors.push('La contraseña debe contener al menos 1 minúscula');
+    }
+    
+    if (!/[0-9]/.test(password)) {
+        errors.push('La contraseña debe contener al menos 1 número');
+    }
+    
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+}
+
+// Validación en tiempo real del campo de contraseña
+function setupPasswordValidation() {
+    const passwordInput = document.getElementById('user-password');
+    const passwordError = document.getElementById('password-error');
+    
+    if (passwordInput && passwordError) {
+        // Remover listeners anteriores si existen
+        const newPasswordInput = passwordInput.cloneNode(true);
+        passwordInput.parentNode.replaceChild(newPasswordInput, passwordInput);
+        
+        newPasswordInput.addEventListener('input', function() {
+            const password = this.value;
+            const userId = document.getElementById('edit-user-id').value;
+            
+            // Si estamos editando y la contraseña está vacía, no validar (permite no cambiar la contraseña)
+            if (userId && password === '') {
+                passwordError.style.display = 'none';
+                passwordError.textContent = '';
+                this.setCustomValidity('');
+                return;
+            }
+            
+            // Si estamos creando un nuevo usuario o editando con contraseña, validar
+            if (password !== '') {
+                const validation = validatePassword(password);
+                if (!validation.isValid) {
+                    passwordError.style.display = 'block';
+                    passwordError.textContent = validation.errors.join('. ');
+                    this.setCustomValidity(validation.errors.join('. '));
+                } else {
+                    passwordError.style.display = 'none';
+                    passwordError.textContent = '';
+                    this.setCustomValidity('');
+                }
+            }
+        });
+    }
+}
+
+// Configurar validación cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    setupPasswordValidation();
+    
+    // También configurar cuando se abre el modal
+    const createUserModal = document.getElementById('createUserModal');
+    if (createUserModal) {
+        createUserModal.addEventListener('shown.bs.modal', function() {
+            setupPasswordValidation();
+        });
+    }
+});
 
 document.getElementById('user-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1167,12 +1532,53 @@ document.getElementById('user-form').addEventListener('submit', (e) => {
     const username = document.getElementById('user-username').value;
     const password = document.getElementById('user-password').value;
     const role = document.getElementById('user-role').value;
+    const passwordError = document.getElementById('password-error');
+
+    // Validar contraseña
+    // Si es un nuevo usuario, la contraseña es obligatoria
+    if (!userId) {
+        if (password === '') {
+            showAlert('La contraseña es obligatoria para crear un nuevo usuario.');
+            return;
+        }
+        const validation = validatePassword(password);
+        if (!validation.isValid) {
+            if (passwordError) {
+                passwordError.style.display = 'block';
+                passwordError.textContent = validation.errors.join('. ');
+            }
+            showAlert(validation.errors.join('. '));
+            return;
+        }
+    } else {
+        // Si se está editando y se ingresó una contraseña, validarla
+        if (password !== '') {
+            const validation = validatePassword(password);
+            if (!validation.isValid) {
+                if (passwordError) {
+                    passwordError.style.display = 'block';
+                    passwordError.textContent = validation.errors.join('. ');
+                }
+                showAlert(validation.errors.join('. '));
+                return;
+            }
+        }
+    }
 
     if (userId) {
         // Edit existing user
         const userIndex = users.findIndex(u => u.id === userId);
         if (userIndex !== -1) {
-            users[userIndex] = { id: userId, username, password, role };
+            const existingUser = users[userIndex];
+            // Si no se ingresó contraseña nueva, mantener la anterior
+            const newPassword = password !== '' ? password : existingUser.password;
+            users[userIndex] = { 
+                id: userId, 
+                username, 
+                password: newPassword, 
+                role,
+                createdAt: existingUser.createdAt || new Date().toISOString()
+            };
         }
     } else {
         // Create new user
@@ -1180,16 +1586,42 @@ document.getElementById('user-form').addEventListener('submit', (e) => {
             showAlert('El nombre de usuario ya existe.');
             return;
         }
-        users.push({ id: generateId(), username, password, role });
+        users.push({ 
+            id: generateUserId(), 
+            username, 
+            password, 
+            role,
+            createdAt: new Date().toISOString()
+        });
     }
+    
+    if (passwordError) {
+        passwordError.style.display = 'none';
+        passwordError.textContent = '';
+    }
+    
     saveUsers();
     renderUserList(1);
     populateTechnicianDropdowns();
     populateAssignTechnicianDropdown();
     const modal = bootstrap.Modal.getInstance(document.getElementById('createUserModal'));
     modal.hide();
+    
+    // Limpiar completamente el formulario
     document.getElementById('user-form').reset();
     document.getElementById('edit-user-id').value = '';
+    document.getElementById('user-username').value = '';
+    document.getElementById('user-password').value = '';
+    document.getElementById('user-role').value = 'employee';
+    // Restablecer placeholder y required para crear nuevo usuario
+    const passwordInput = document.getElementById('user-password');
+    passwordInput.placeholder = 'Ingrese la contraseña';
+    passwordInput.setAttribute('required', 'required');
+    // Usar la variable passwordError ya declarada arriba
+    if (passwordError) {
+        passwordError.style.display = 'none';
+        passwordError.textContent = '';
+    }
 });
 
 function editUser(id) {
@@ -1197,42 +1629,665 @@ function editUser(id) {
     if (user) {
         document.getElementById('edit-user-id').value = user.id;
         document.getElementById('user-username').value = user.username;
-        document.getElementById('user-password').value = user.password;
+        const passwordInput = document.getElementById('user-password');
+        passwordInput.value = ''; // Limpiar contraseña al editar
+        passwordInput.placeholder = 'Dejar vacío para mantener la contraseña actual';
+        passwordInput.removeAttribute('required');
         document.getElementById('user-role').value = user.role;
+        const passwordError = document.getElementById('password-error');
+        if (passwordError) {
+            passwordError.style.display = 'none';
+            passwordError.textContent = '';
+        }
         const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
         modal.show();
         document.getElementById('createUserModalLabel').textContent = 'Editar Usuario';
+        // Configurar validación después de abrir el modal
+        setTimeout(setupPasswordValidation, 100);
     }
 }
 
 function deleteUser(id) {
     showConfirm('¿Estás seguro de que quieres eliminar este usuario?', (result) => {
         if (result) {
-                    users = users.filter(u => u.id !== id);
-        saveUsers();
-        renderUserList(1);
-        populateTechnicianDropdowns();
-        populateAssignTechnicianDropdown();
-        // Desasignar servicios si el técnico eliminado tenía alguno asignado
-        services.forEach(service => {
-            if (service.technicianId === id) {
-                service.technicianId = null;
-                service.status = 'Pendiente'; // Reset status
-            }
-        });
-        saveServices();
-        renderAdminServicesList(services, 1);
-        renderAssignedServicesList(1);
-        renderEmployeeAssignedServices(1); // Refresh for other employees
-            //showAlert('Usuario eliminado exitosamente.');
+            users = users.filter(u => u.id !== id);
+            saveUsers();
+            renderUserList(1);
+            populateTechnicianDropdowns();
+            populateAssignTechnicianDropdown();
+            // Desasignar servicios si el técnico eliminado tenía alguno asignado
+            services.forEach(service => {
+                if (service.technicianId === id) {
+                    service.technicianId = null;
+                    service.status = 'Pendiente'; // Reset status
+                }
+            });
+            saveServices();
+            renderAdminServicesList(services, 1);
+            renderAssignedServicesList(1);
+            renderEmployeeAssignedServices(1); // Refresh for other employees
         }
     });
+}
+
+// Funciones para eliminar usuarios masivamente
+function openDeleteUsersModal() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteUsersModal'));
+    const deleteUsersList = document.getElementById('delete-users-list');
+    const searchInput = document.getElementById('search-delete-users');
+    if (searchInput) searchInput.value = '';
+    deleteUsersList.innerHTML = '';
+    
+    // Mostrar todos los usuarios con checkboxes
+    users.forEach(user => {
+        const roleText = user.role === 'admin' ? 'Administrador' : 'Técnico';
+        const userCard = document.createElement('div');
+        userCard.className = 'card mb-2';
+        userCard.style.border = '1px solid #dee2e6';
+        userCard.innerHTML = `
+            <div class="card-body d-flex align-items-center">
+                <input type="checkbox" class="form-check-input me-3" value="${user.id}" id="user-checkbox-${user.id}" style="width: 20px; height: 20px;">
+                <div class="flex-grow-1">
+                    <strong>${user.username}</strong>
+                    <div class="text-muted">Rol: ${roleText}</div>
+                </div>
+            </div>
+        `;
+        deleteUsersList.appendChild(userCard);
+    });
+    
+    modal.show();
+}
+
+function selectAllUsers() {
+    const checkboxes = document.querySelectorAll('#delete-users-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllUsers() {
+    const checkboxes = document.querySelectorAll('#delete-users-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+function confirmDeleteUsers() {
+    const checkboxes = document.querySelectorAll('#delete-users-list input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showAlert('Por favor, selecciona al menos un usuario para eliminar.');
+        return;
+    }
+    
+    showConfirm(`¿Estás seguro de que quieres eliminar ${selectedIds.length} usuario(s)? Esta acción no se puede deshacer.`, (result) => {
+        if (result) {
+            // Cerrar modal de selección
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteUsersModal'));
+            modal.hide();
+            
+            // Inicializar modal de progreso
+            initProgressModal('delete', selectedIds.length);
+            
+            let processed = 0;
+            let successes = 0;
+            let errors = 0;
+            
+            // Función para eliminar cada usuario de forma asíncrona
+            function deleteUser(index) {
+                if (index >= selectedIds.length) {
+                    // Eliminación completada
+                    saveUsers();
+                    saveServices();
+                    
+                    // Actualizar listas
+                    renderUserList(1);
+                    populateTechnicianDropdowns();
+                    populateAssignTechnicianDropdown();
+                    renderAdminServicesList(services, 1);
+                    renderAssignedServicesList(1);
+                    renderEmployeeAssignedServices(1);
+                    
+                    // Limpiar búsqueda si estaba activa
+                    filteredUsers = [];
+                    document.getElementById('search-users').value = '';
+                    
+                    completeProgress('delete', successes, 
+                        `Eliminación completada. ${successes} registro(s) eliminado(s).`, 
+                        successes, 0, errors);
+                    return;
+                }
+                
+                const userId = selectedIds[index];
+                
+                // Desasignar servicios si el técnico eliminado tenía alguno asignado
+                services.forEach(service => {
+                    if (service.technicianId === userId) {
+                        service.technicianId = null;
+                        service.status = 'Pendiente';
+                    }
+                });
+                
+                const initialLength = users.length;
+                users = users.filter(u => u.id !== userId);
+                
+                if (users.length < initialLength) {
+                    successes++;
+                } else {
+                    errors++;
+                }
+                
+                processed++;
+                updateProgress(processed, selectedIds.length, 
+                    `Eliminando registro ${processed} de ${selectedIds.length}...`, 
+                    successes, 0, errors);
+                
+                // Procesar siguiente usuario con pequeño delay
+                setTimeout(() => deleteUser(index + 1), 10);
+            }
+            
+            // Iniciar eliminación
+            deleteUser(0);
+        }
+    });
+}
+
+// --- Client Management (Admin) ---
+
+// Variables de paginación para clientes
+let currentClientPage = 1;
+let filteredClients = [];
+const ITEMS_PER_PAGE_CLIENTS = 15;
+
+// Función para generar consecutivo automático (4 primeras letras del nombre)
+function generateClientConsecutive(name) {
+    if (!name || name.trim() === '') return '';
+    const cleanName = name.trim().toUpperCase().replace(/[^A-Z]/g, '');
+    return cleanName.substring(0, 4);
+}
+
+// Función para actualizar consecutivo cuando cambia el nombre
+function updateClientConsecutive() {
+    const nameInput = document.getElementById('client-name');
+    const consecutiveInput = document.getElementById('client-consecutive');
+    if (nameInput && consecutiveInput) {
+        const consecutive = generateClientConsecutive(nameInput.value);
+        consecutiveInput.value = consecutive;
+    }
+}
+
+// Función para renderizar lista de clientes
+function renderClientList(page = 1, clientsToRender = null) {
+    currentClientPage = page;
+    const clientListElement = document.getElementById('client-list');
+    if (!clientListElement) return;
+    
+    const clientTable = clientListElement.closest('table');
+    
+    const clientsToDisplay = clientsToRender || filteredClients.length > 0 ? filteredClients : clients;
+    
+    clientListElement.innerHTML = '';
+    
+    const totalPages = getTotalPages(clientsToDisplay.length, ITEMS_PER_PAGE_CLIENTS);
+    const paginatedClients = paginateArray(clientsToDisplay, page, ITEMS_PER_PAGE_CLIENTS);
+    
+    if (paginatedClients.length === 0) {
+        const noResultsRow = document.createElement('tr');
+        noResultsRow.innerHTML = `
+            <td colspan="9" class="text-center text-muted py-4" style="text-align: center !important; vertical-align: middle;">
+                <i class="bi bi-people" style="font-size: 2rem;"></i>
+                <br><br>
+                <strong>No hay clientes registrados</strong>
+            </td>
+        `;
+        clientListElement.appendChild(noResultsRow);
+    } else {
+        paginatedClients.forEach((client, index) => {
+            let createdAt = 'N/A';
+            if (client.createdAt) {
+                const date = new Date(client.createdAt);
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                const hours = date.getHours();
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+                const hours12 = hours % 12 || 12;
+                createdAt = `${day}/${month}/${year}, ${String(hours12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+            }
+            
+            const rowNumber = (page - 1) * ITEMS_PER_PAGE_CLIENTS + index + 1;
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${rowNumber}</td>
+                <td>${client.name || ''}</td>
+                <td>${client.nit || ''}</td>
+                <td>${client.address || ''}</td>
+                <td>${client.phone || ''}</td>
+                <td>${client.email || ''}</td>
+                <td>${client.consecutive || ''}</td>
+                <td>${createdAt}</td>
+                <td>
+                    <button class="btn btn-warning btn-sm me-1" onclick="editClient('${client.id}')" title="Editar">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteClient('${client.id}')" title="Eliminar">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </td>
+            `;
+            clientListElement.appendChild(row);
+        });
+    }
+    
+    // Generar controles de paginación
+    const paginationContainer = clientTable.closest('.card-body');
+    const existingPagination = paginationContainer.querySelector('.pagination-container');
+    if (existingPagination) {
+        existingPagination.remove();
+    }
+    
+    const paginationDiv = document.createElement('div');
+    paginationDiv.id = 'client-pagination';
+    paginationDiv.className = 'pagination-container';
+    paginationContainer.appendChild(paginationDiv);
+    
+    generatePaginationControls(page, totalPages, 'client-pagination', (p) => renderClientList(p, clientsToRender));
+}
+
+// Función para filtrar clientes
+function filterClients() {
+    const searchTerm = document.getElementById('search-clients').value.toLowerCase().trim();
+    
+    if (!searchTerm) {
+        filteredClients = [];
+        renderClientList(1);
+        return;
+    }
+    
+    filteredClients = clients.filter(client => {
+        const name = (client.name || '').toLowerCase();
+        const nit = (client.nit || '').toLowerCase();
+        const address = (client.address || '').toLowerCase();
+        const phone = (client.phone || '').toLowerCase();
+        const email = (client.email || '').toLowerCase();
+        const consecutive = (client.consecutive || '').toLowerCase();
+        let createdAt = '';
+        if (client.createdAt) {
+            const date = new Date(client.createdAt);
+            createdAt = date.toLocaleString('es-CO').toLowerCase();
+        }
+        
+        return name.includes(searchTerm) || 
+               nit.includes(searchTerm) || 
+               address.includes(searchTerm) ||
+               phone.includes(searchTerm) ||
+               email.includes(searchTerm) ||
+               consecutive.includes(searchTerm) ||
+               createdAt.includes(searchTerm);
+    });
+    
+    renderClientList(1, filteredClients);
+}
+
+// Función para limpiar búsqueda
+function clearClientSearch() {
+    document.getElementById('search-clients').value = '';
+    filteredClients = [];
+    renderClientList(1);
+}
+
+// Event listener para el formulario de clientes
+if (document.getElementById('client-form')) {
+    document.getElementById('client-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const clientId = document.getElementById('edit-client-id').value;
+        const name = document.getElementById('client-name').value.trim();
+        const nit = document.getElementById('client-nit').value.trim();
+        const address = document.getElementById('client-address').value.trim();
+        const phone = document.getElementById('client-phone').value.trim();
+        const email = document.getElementById('client-email').value.trim();
+        const consecutive = document.getElementById('client-consecutive').value.trim();
+        
+        if (clientId) {
+            // Edit existing client
+            const clientIndex = clients.findIndex(c => c.id === clientId);
+            if (clientIndex !== -1) {
+                const existingClient = clients[clientIndex];
+                clients[clientIndex] = {
+                    id: clientId,
+                    name,
+                    nit,
+                    address,
+                    phone,
+                    email,
+                    consecutive: consecutive || generateClientConsecutive(name),
+                    createdAt: existingClient.createdAt || new Date().toISOString()
+                };
+            }
+        } else {
+            // Create new client
+            clients.push({
+                id: generateId(),
+                name,
+                nit,
+                address,
+                phone,
+                email,
+                consecutive: consecutive || generateClientConsecutive(name),
+                createdAt: new Date().toISOString()
+            });
+        }
+        
+        saveClients();
+        renderClientList(1);
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createClientModal'));
+        modal.hide();
+        
+        // Limpiar completamente el formulario
+        document.getElementById('client-form').reset();
+        document.getElementById('edit-client-id').value = '';
+        document.getElementById('client-name').value = '';
+        document.getElementById('client-nit').value = '';
+        document.getElementById('client-address').value = '';
+        document.getElementById('client-phone').value = '';
+        document.getElementById('client-email').value = '';
+        document.getElementById('client-consecutive').value = '';
+    });
+}
+
+function editClient(id) {
+    const client = clients.find(c => c.id === id);
+    if (client) {
+        document.getElementById('edit-client-id').value = client.id;
+        document.getElementById('client-name').value = client.name || '';
+        document.getElementById('client-nit').value = client.nit || '';
+        document.getElementById('client-address').value = client.address || '';
+        document.getElementById('client-phone').value = client.phone || '';
+        document.getElementById('client-email').value = client.email || '';
+        document.getElementById('client-consecutive').value = client.consecutive || '';
+        const modal = new bootstrap.Modal(document.getElementById('createClientModal'));
+        modal.show();
+        document.getElementById('createClientModalLabel').textContent = 'Editar Cliente';
+    }
+}
+
+function deleteClient(id) {
+    showConfirm('¿Estás seguro de que quieres eliminar este cliente?', (result) => {
+        if (result) {
+            clients = clients.filter(c => c.id !== id);
+            saveClients();
+            renderClientList(1);
+        }
+    });
+}
+
+// Funciones para eliminar clientes masivamente
+function openDeleteClientsModal() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteClientsModal'));
+    const deleteClientsList = document.getElementById('delete-clients-list');
+    const searchInput = document.getElementById('search-delete-clients');
+    if (searchInput) searchInput.value = '';
+    deleteClientsList.innerHTML = '';
+    
+    clients.forEach(client => {
+        const clientCard = document.createElement('div');
+        clientCard.className = 'card mb-2';
+        clientCard.style.border = '1px solid #dee2e6';
+        clientCard.innerHTML = `
+            <div class="card-body d-flex align-items-center">
+                <input type="checkbox" class="form-check-input me-3" value="${client.id}" id="client-checkbox-${client.id}" style="width: 20px; height: 20px;">
+                <div class="flex-grow-1">
+                    <strong>${client.name || ''}</strong>
+                    <div class="text-muted">NIT/CC: ${client.nit || ''}</div>
+                </div>
+            </div>
+        `;
+        deleteClientsList.appendChild(clientCard);
+    });
+    
+    modal.show();
+}
+
+function selectAllClients() {
+    const checkboxes = document.querySelectorAll('#delete-clients-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllClients() {
+    const checkboxes = document.querySelectorAll('#delete-clients-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+function confirmDeleteClients() {
+    const checkboxes = document.querySelectorAll('#delete-clients-list input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showAlert('Por favor, selecciona al menos un cliente para eliminar.');
+        return;
+    }
+    
+    showConfirm(`¿Estás seguro de que quieres eliminar ${selectedIds.length} cliente(s)? Esta acción no se puede deshacer.`, (result) => {
+        if (result) {
+            // Cerrar modal de selección
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteClientsModal'));
+            modal.hide();
+            
+            // Inicializar modal de progreso
+            initProgressModal('delete', selectedIds.length);
+            
+            let processed = 0;
+            let successes = 0;
+            let errors = 0;
+            
+            // Función para eliminar cada cliente de forma asíncrona
+            function deleteClient(index) {
+                if (index >= selectedIds.length) {
+                    // Eliminación completada
+                    saveClients();
+                    
+                    renderClientList(1);
+                    filteredClients = [];
+                    document.getElementById('search-clients').value = '';
+                    
+                    completeProgress('delete', successes, 
+                        `Eliminación completada. ${successes} registro(s) eliminado(s).`, 
+                        successes, 0, errors);
+                    return;
+                }
+                
+                const clientId = selectedIds[index];
+                const initialLength = clients.length;
+                clients = clients.filter(c => c.id !== clientId);
+                
+                if (clients.length < initialLength) {
+                    successes++;
+                } else {
+                    errors++;
+                }
+                
+                processed++;
+                updateProgress(processed, selectedIds.length, 
+                    `Eliminando registro ${processed} de ${selectedIds.length}...`, 
+                    successes, 0, errors);
+                
+                // Procesar siguiente cliente con pequeño delay
+                setTimeout(() => deleteClient(index + 1), 10);
+            }
+            
+            // Iniciar eliminación
+            deleteClient(0);
+        }
+    });
+}
+
+// Función para exportar clientes a Excel
+function exportClientsToExcel() {
+    const clientsToExport = filteredClients.length > 0 ? filteredClients : clients;
+    
+    if (clientsToExport.length === 0) {
+        showAlert('No hay clientes para exportar.');
+        return;
+    }
+    
+    const data = clientsToExport.map(client => ({
+        'Nombre': client.name || '',
+        'NIT/CC': client.nit || '',
+        'Dirección': client.address || '',
+        'Teléfono': client.phone || '',
+        'Email': client.email || '',
+        'Consecutivo': client.consecutive || '',
+        'Fecha de Creación': client.createdAt ? new Date(client.createdAt).toLocaleString('es-CO') : ''
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+    
+    const filename = `clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    
+    showAlert(`Se exportaron ${clientsToExport.length} cliente(s) exitosamente.`);
+}
+
+// Función para importar clientes desde Excel
+function importClientsFromExcel() {
+    document.getElementById('import-clients-file').click();
+}
+
+if (document.getElementById('import-clients-file')) {
+    document.getElementById('import-clients-file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                
+                if (jsonData.length === 0) {
+                    showAlert('El archivo Excel está vacío.');
+                    e.target.value = '';
+                    return;
+                }
+                
+                // Inicializar modal de progreso
+                initProgressModal('import', jsonData.length);
+                
+                const errors = [];
+                const importedClients = [];
+                let processed = 0;
+                
+                // Función para procesar cada fila de forma asíncrona
+                function processRow(index) {
+                    if (index >= jsonData.length) {
+                        // Procesamiento completado
+                        const totalSuccesses = importedClients.length;
+                        
+                        if (importedClients.length > 0) {
+                            clients.push(...importedClients);
+                            saveClients();
+                            renderClientList(1);
+                        }
+                        
+                        let finalMessage = '';
+                        if (totalSuccesses > 0 && errors.length > 0) {
+                            finalMessage = `Importación completada. ${totalSuccesses} registro(s) importado(s). ${errors.length} error(es) encontrado(s).`;
+                        } else if (totalSuccesses > 0) {
+                            finalMessage = `Importación completada. ${totalSuccesses} registro(s) importado(s) exitosamente.`;
+                        } else {
+                            finalMessage = `Importación completada con errores. ${errors.length} error(es) encontrado(s).`;
+                        }
+                        
+                        completeProgress('import', totalSuccesses, finalMessage, totalSuccesses, 0, errors.length);
+                        e.target.value = '';
+                        return;
+                    }
+                    
+                    const row = jsonData[index];
+                    const name = (row['Nombre'] || row['NOMBRE'] || '').toString().trim();
+                    const nit = (row['NIT/CC'] || row['NIT'] || row['CC'] || '').toString().trim();
+                    
+                    // Buscar dirección de manera flexible - buscar cualquier clave que contenga "direccion" o "dirección"
+                    let address = '';
+                    const addressKey = Object.keys(row).find(key => {
+                        const keyLower = key.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        return keyLower.includes('direccion');
+                    });
+                    if (addressKey) {
+                        address = (row[addressKey] || '').toString().trim();
+                    } else {
+                        // Si no se encuentra, intentar con las variantes comunes
+                        address = (row['Dirección'] || row['DIRECCIÓN'] || row['DIRECCION'] || row['Direccion'] || row['dirección'] || row['direccion'] || '').toString().trim();
+                    }
+                    
+                    const phone = (row['Teléfono'] || row['TELEFONO'] || row['Telefono'] || row['telefono'] || '').toString().trim();
+                    const email = (row['Email'] || row['EMAIL'] || row['email'] || '').toString().trim();
+                    const consecutive = (row['Consecutivo'] || row['CONSECUTIVO'] || row['consecutivo'] || '').toString().trim();
+                    
+                    if (!name) {
+                        errors.push(`Fila ${index + 2}: Falta el campo obligatorio 'Nombre'`);
+                    } else {
+                        const clientConsecutive = consecutive || generateClientConsecutive(name);
+                        
+                        importedClients.push({
+                            id: generateId(),
+                            name,
+                            nit,
+                            address,
+                            phone,
+                            email,
+                            consecutive: clientConsecutive,
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+                    
+                    processed++;
+                    updateProgress(processed, jsonData.length, 
+                        `Procesando registro ${processed} de ${jsonData.length}...`, 
+                        importedClients.length, 0, errors.length);
+                    
+                    // Procesar siguiente fila con pequeño delay para permitir actualización de UI
+                    setTimeout(() => processRow(index + 1), 10);
+                }
+                
+                // Iniciar procesamiento
+                processRow(0);
+                
+            } catch (error) {
+                closeProgressModal();
+                showAlert(`Error al importar el archivo: ${error.message}`);
+                e.target.value = '';
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+// Renderizar lista de clientes al cargar el dashboard de admin
+function initializeClientsModule() {
+    if (document.getElementById('client-list')) {
+        renderClientList(1);
+    }
 }
 
 // --- Service Registration and Management (Admin) ---
 
 function populateTechnicianDropdowns() {
-    const technicianSelects = document.querySelectorAll('#service-technician, #assign-technician');
+    const technicianSelects = document.querySelectorAll('#assign-technician'); // #service-technician eliminado
     technicianSelects.forEach(select => {
         select.innerHTML = '<option value="">Seleccionar técnico...</option>';
         users.filter(user => user.role === 'employee').forEach(user => {
@@ -1244,81 +2299,13 @@ function populateTechnicianDropdowns() {
     });
 }
 
-// Función para limpiar completamente el formulario de servicios
-function clearServiceForm() {
-    console.log('🧹 Limpiando formulario de servicios...');
-    
-    // Limpiar todos los campos del formulario
-    const form = document.getElementById('service-form');
-    if (form) {
-        form.reset();
-    }
-    
-    // Limpiar campos específicos
-    const fields = [
-        'service-date',
-        'service-code',
-        'service-type',
-        'service-description',
-        'service-location',
-        'service-client-name',
-        'service-client-phone',
-        'service-status',
-        'edit-service-id',
-        'service-photo'
-    ];
-    
-    fields.forEach(fieldId => {
-        const field = document.getElementById(fieldId);
-        if (field) {
-            if (field.tagName === 'SELECT') {
-                field.value = '';
-                field.disabled = false;
-                field.style.backgroundColor = '';
-            } else {
-                field.value = '';
-            }
-        }
-    });
-    
-    // Limpiar firmas
-    clearSignaturePad('client');
-    clearSignaturePad('technician');
-    
-    // Limpiar foto
-    const photoPreview = document.getElementById('service-photo-preview');
-    if (photoPreview) {
-        photoPreview.classList.add('d-none');
-        photoPreview.src = '';
-    }
-    
-    console.log('✅ Formulario de servicios limpiado completamente');
-}
-
 // Función para cargar los códigos de servicio en el dropdown
 function populateServiceCodes() {
-    console.log('=== populateServiceCodes llamado ===');
-    console.log('costoServicios disponibles:', costoServicios);
-    
-    const serviceCodeSelect = document.getElementById('service-code');
-    if (serviceCodeSelect) {
-        // Asegurar que el dropdown esté habilitado
-        serviceCodeSelect.disabled = false;
-        serviceCodeSelect.style.backgroundColor = '';
-        
-        serviceCodeSelect.innerHTML = '<option value="">Seleccionar código de servicio...</option>';
-        costoServicios.forEach(servicio => {
-            const option = document.createElement('option');
-            option.value = servicio.codigo;
-            option.textContent = `${servicio.codigo} - ${servicio.descripcion}`;
-            serviceCodeSelect.appendChild(option);
-            console.log('Agregada opción:', servicio.codigo, '-', servicio.descripcion);
-        });
-        console.log('✅ Dropdown de códigos de servicio poblado correctamente');
-    } else {
-        console.log('❌ No se encontró el elemento service-code');
+    // El campo ahora es un input de texto, no un select, así que solo limpiamos el campo si está vacío
+    const serviceCodeInput = document.getElementById('service-code');
+    if (serviceCodeInput && !serviceCodeInput.value) {
+        serviceCodeInput.placeholder = 'Escribir para buscar código..';
     }
-    console.log('=== Fin populateServiceCodes ===');
 }
 
 // Función para cargar los detalles del servicio seleccionado
@@ -1326,39 +2313,23 @@ function loadServiceDetails() {
     const serviceCode = document.getElementById('service-code').value;
     const serviceType = document.getElementById('service-type');
     const serviceDescription = document.getElementById('service-description');
-    
-    console.log('=== loadServiceDetails llamado ===');
-    console.log('Código seleccionado:', serviceCode);
-    console.log('costoServicios disponibles:', costoServicios);
-    
     if (serviceCode) {
         const servicio = costoServicios.find(s => s.codigo === serviceCode);
-        console.log('Servicio encontrado en costoServicios:', servicio);
-        
         if (servicio) {
             serviceType.value = servicio.tipo;
             serviceDescription.value = servicio.descripcion;
-            console.log('✅ Campos actualizados en el formulario:');
-            console.log('   Tipo de servicio:', servicio.tipo);
-            console.log('   Descripción:', servicio.descripcion);
-            console.log('   Valor en campo tipo:', serviceType.value);
-            console.log('   Valor en campo descripción:', serviceDescription.value);
         } else {
-            console.log('❌ No se encontró servicio con código:', serviceCode);
             serviceType.value = '';
             serviceDescription.value = '';
         }
     } else {
         serviceType.value = '';
         serviceDescription.value = '';
-        console.log('Código de servicio vacío, campos limpiados');
     }
-    console.log('=== Fin loadServiceDetails ===');
 }
 
 // Función para corregir servicios existentes que no tienen safeType
 function fixExistingServices() {
-    console.log('=== Corrigiendo servicios existentes ===');
     let fixedCount = 0;
     
     services.forEach(service => {
@@ -1368,23 +2339,14 @@ function fixExistingServices() {
                 service.safeType = servicio.tipo;
                 service.description = servicio.descripcion;
                 fixedCount++;
-                console.log(`✅ Servicio ${service.id} corregido:`, {
-                    codigo: service.serviceCode,
-                    tipo: service.safeType,
-                    descripcion: service.description
-                });
             }
         }
     });
     
     if (fixedCount > 0) {
         saveServices();
-        console.log(`✅ ${fixedCount} servicios corregidos y guardados`);
     } else {
-        console.log('✅ No se encontraron servicios que necesiten corrección');
     }
-    
-    console.log('=== Fin corrección de servicios ===');
 }
 
 
@@ -1409,10 +2371,10 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
     const paginatedServices = paginateArray(filteredServices, page);
     
     if (paginatedServices.length === 0) {
-        // Mensaje para tabla
+        // Mensaje para tabla (11 columnas: # + 10 columnas originales)
         const noResultsRow = document.createElement('tr');
         noResultsRow.innerHTML = `
-            <td colspan="9" class="text-center text-muted py-4">
+            <td colspan="11" class="text-center text-muted py-4" style="text-align: center !important; vertical-align: middle;">
                 <i class="bi bi-search" style="font-size: 2rem;"></i>
                 <br><br>
                 <strong>No se encontraron servicios</strong>
@@ -1436,41 +2398,72 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
     } else {
         paginatedServices.forEach(service => {
             const canEdit = !['Finalizado', 'Cancelado'].includes(service.status);
+            
+            // Botón de estado con color según el estado del servicio
+            let statusButtonClass = 'btn-status-service';
+            let statusButtonColor = '';
+            switch(service.status) {
+                case 'Finalizado':
+                    statusButtonColor = 'btn-status-finalizado';
+                    break;
+                case 'En proceso':
+                    statusButtonColor = 'btn-status-en-proceso';
+                    break;
+                case 'Pendiente':
+                    statusButtonColor = 'btn-status-pendiente';
+                    break;
+                case 'Cancelado':
+                    statusButtonColor = 'btn-status-cancelado';
+                    break;
+                default:
+                    statusButtonColor = 'btn-status-default';
+            }
+            const statusButton = `<button class="btn ${statusButtonClass} ${statusButtonColor}" disabled>${service.status || '-'}</button>`;
+            
+            // Botones de acción con el mismo estilo que la tabla de usuarios - apilados verticalmente
+            const viewButton = `<button class="btn btn-info btn-sm service-action-btn" onclick="viewServiceDetails('${service.id}')" title="Ver detalles">
+                <i class="bi bi-eye-fill"></i>
+            </button>`;
+            
             const editButton = canEdit ?
-                `<button class="btn btn-warning btn-sm" onclick="editService('${service.id}')">Editar</button>` :
-                `<button class="btn btn-warning btn-sm" disabled title="No se puede editar servicio finalizado/cancelado">Editar</button>`;
+                `<button class="btn btn-warning btn-sm service-action-btn" onclick="editService('${service.id}')" title="Editar">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>` :
+                `<button class="btn btn-warning btn-sm service-action-btn" disabled title="No se puede editar servicio finalizado/cancelado">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>`;
+            
             const deleteButton = canEdit ?
-                `<button class="btn btn-danger btn-sm" onclick="deleteService('${service.id}')">Eliminar</button>` :
-                `<button class="btn btn-danger btn-sm" disabled title="No se puede eliminar servicio finalizado/cancelado">Eliminar</button>`;
+                `<button class="btn btn-danger btn-sm service-action-btn" onclick="deleteService('${service.id}')" title="Eliminar">
+                    <i class="bi bi-trash-fill"></i>
+                </button>` :
+                `<button class="btn btn-danger btn-sm service-action-btn" disabled title="No se puede eliminar servicio finalizado/cancelado">
+                    <i class="bi bi-trash-fill"></i>
+                </button>`;
 
             // Generar fila de tabla (vista desktop)
             const row = document.createElement('tr');
-            console.log('=== Renderizando servicio ===');
-            console.log('ID:', service.id);
-            console.log('Fecha:', service.date);
-            console.log('Cliente:', service.clientName);
-            console.log('Código:', service.serviceCode);
-            console.log('Tipo:', service.safeType);
-            console.log('Descripción:', service.description);
-            console.log('Ubicación:', service.location);
-            console.log('Técnico:', service.technicianId);
-            console.log('Estado:', service.status);
-            console.log('==========================');
+            // Obtener fecha y hora
+            const serviceDate = formatServiceDate(service.date);
+            const serviceTime = formatServiceTime(service.time);
+            const clientNit = getClientNitByName(service.clientName);
             
             row.innerHTML = `
                 <td>${service.id}</td>
-                <td>${service.date}</td>
+                <td>${serviceDate}</td>
+                <td>${serviceTime}</td>
                 <td>${service.clientName || '-'}</td>
-                <td>${service.serviceCode || '-'}</td>
-                <td>${service.safeType || 'No definido'}</td>
-                <td>${service.description || '-'}</td>
+                <td>${clientNit}</td>
                 <td>${service.location || '-'}</td>
+                <td>${service.serviceCode || '-'}</td>
                 <td>${getTechnicianNameById(service.technicianId) || 'No asignado'}</td>
-                <td>${service.status || '-'}</td>
+                <td>${statusButton}</td>
                 <td>
-                    <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')">Ver</button>
-                    ${editButton}
-                    ${deleteButton}
+                    <div class="service-actions-container">
+                        ${viewButton}
+                        ${editButton}
+                        ${deleteButton}
+                    </div>
                 </td>
             `;
             servicesListElement.appendChild(row);
@@ -1524,7 +2517,9 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')">Ver</button>
+                    <button class="btn btn-info btn-sm me-1" onclick="viewServiceDetails('${service.id}')">
+                        <i class="bi bi-eye-fill"></i> Ver
+                    </button>
                     ${editButton}
                     ${deleteButton}
                 </div>
@@ -1553,7 +2548,7 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
     });
     
     // Actualizar estadísticas cuando se renderiza la lista
-    updateServicesStatistics(filteredServices);
+    updateServicesStatistics();
 }
 
 function filterServices() {
@@ -1562,6 +2557,11 @@ function filterServices() {
     const dateTo = document.getElementById('filter-date-to').value;
 
     let filtered = services;
+
+    // Filtrar por estado
+    if (currentAdminServicesStatusFilter !== 'todos') {
+        filtered = filtered.filter(service => service.status === currentAdminServicesStatusFilter);
+    }
 
     // Filtrar por término de búsqueda
     if (searchTerm) {
@@ -1595,22 +2595,36 @@ function filterServices() {
     }
 
     renderAdminServicesList(filtered);
-    updateServicesStatistics(filtered);
+    updateServicesStatistics();
+}
+
+function filterServicesByStatus(status) {
+    currentAdminServicesStatusFilter = status;
+    filterServices();
+}
+
+function refreshServices() {
+    currentAdminServicesStatusFilter = 'todos';
+    clearFilters();
+    renderAdminServicesList(services, 1);
+    updateServicesStatistics();
 }
 
 function clearFilters() {
     document.getElementById('search-services').value = '';
     document.getElementById('filter-date-from').value = '';
     document.getElementById('filter-date-to').value = '';
+    currentAdminServicesStatusFilter = 'todos';
     filterServices();
 }
 
-function updateServicesStatistics(servicesToCount = services) {
-    const total = servicesToCount.length;
-    const completed = servicesToCount.filter(s => s.status === 'Finalizado').length;
-    const inProgress = servicesToCount.filter(s => s.status === 'En proceso').length;
-    const pending = servicesToCount.filter(s => s.status === 'Pendiente').length;
-    const cancelled = servicesToCount.filter(s => s.status === 'Cancelado').length;
+function updateServicesStatistics() {
+    // Siempre usar el array completo de servicios para que los números no cambien al filtrar
+    const total = services.length;
+    const completed = services.filter(s => s.status === 'Finalizado').length;
+    const inProgress = services.filter(s => s.status === 'En proceso').length;
+    const pending = services.filter(s => s.status === 'Pendiente').length;
+    const cancelled = services.filter(s => s.status === 'Cancelado').length;
 
     document.getElementById('total-services-count').textContent = total;
     document.getElementById('completed-services-count').textContent = completed;
@@ -1659,21 +2673,8 @@ function setServiceTypes(typesString) {
     });
 }
 
-// Event listener eliminado - se usa el listener correcto más abajo
 
-function saveServiceData(serviceId, date, safeType, description, location, clientName, clientPhone, status, photoData) {
-    console.log('=== saveServiceData llamado ===');
-    console.log('serviceId:', serviceId);
-    console.log('date:', date);
-    console.log('safeType:', safeType);
-    console.log('description:', description);
-    console.log('location:', location);
-    console.log('clientName:', clientName);
-    console.log('clientPhone:', clientPhone);
-    console.log('status:', status);
-    console.log('currentUser.role:', currentUser?.role);
-    console.log('photoData length:', photoData ? photoData.length : 0);
-    console.log('==============================');
+function saveServiceData(serviceId, date, time, safeType, description, location, clientName, clientPhone, clientNit, clientEmail, status, photoData, quantity = 1, additionalServices = []) {
     let clientSignatureData = '';
     let technicianSignatureData = '';
 
@@ -1716,9 +2717,10 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
             startLocation = existingService.startLocation || null;
 
 
-            if (!document.getElementById('service-technician-field').classList.contains('d-none')) {
-                currentTechnicianId = document.getElementById('service-technician').value;
-            }
+            // Campo de técnico eliminado - ya no se usa
+            // if (!document.getElementById('service-technician-field').classList.contains('d-none')) {
+            //     currentTechnicianId = document.getElementById('service-technician').value;
+            // }
         }
     }
 
@@ -1732,7 +2734,7 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
                 }
                 cancellationReason = inputReason;
                 // Since confirm is async, re-call the main save function with the reason
-                saveServiceData(serviceId, date, safeType, description, location, clientName, clientPhone, status, photoData);
+                saveServiceData(serviceId, date, time, safeType, description, location, clientName, clientPhone, clientNit, clientEmail, status, photoData, quantity, additionalServices);
             });
             return; // Exit to wait for confirm modal input
         }
@@ -1779,7 +2781,6 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
                 },
                 (error) => {
                     // Error: mostrar mensaje específico
-                    console.error('Error de geolocalización para finalización:', error);
                     showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
                 },
                 'finalizacion_servicio'
@@ -1794,39 +2795,24 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
         
         // Obtener el serviceId del campo oculto
         const serviceId = document.getElementById('edit-service-id').value;
-        
-        // Debug: Verificar el valor de serviceId
-        debugLog('Valor de serviceId antes de la asignación:', serviceId);
-        debugLog('serviceId.trim() !== "":', serviceId && serviceId.trim() !== '');
-        
-        const generatedId = generateServiceId();
-        debugLog('ID generado por generateServiceId():', generatedId);
-        
+        // Obtener el consecutivo del cliente para generar el ID
+        const clientConsecutive = getClientConsecutiveByName(clientName);
+        const generatedId = generateServiceId(clientConsecutive);
         const finalId = serviceId && serviceId.trim() !== '' ? serviceId : generatedId;
-        debugLog('ID final asignado al servicio:', finalId);
-        
-        console.log('=== Creando nuevo servicio ===');
-        console.log('finalId:', finalId);
-        console.log('date:', date);
-        console.log('serviceCode:', document.getElementById('service-code').value);
-        console.log('safeType:', safeType);
-        console.log('description:', description);
-        console.log('location:', location);
-        console.log('clientName:', clientName);
-        console.log('clientPhone:', clientPhone);
-        console.log('status:', status);
-        
         const newService = {
             id: finalId,
             date,
+            time: String(time || '').trim(),
             serviceCode: document.getElementById('service-code').value,
             safeType,
             description,
             location,
-            technicianId: currentTechnicianId,
+            technicianId: currentTechnicianId, // Preservar el técnico asignado
             photo: photoData,
             clientName,
             clientPhone,
+            clientNit: clientNit || '',
+            clientEmail: clientEmail || '',
             clientSignature: clientSignatureData,
             technicianSignature: technicianSignatureData,
             status,
@@ -1834,15 +2820,16 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
             startTime: startTime,
             startLocation: startLocation,
             finalizationOrCancellationTime: finalizationOrCancellationTime,
-            finalizationOrCancellationLocation: finalizationOrCancellationLocation
+            finalizationOrCancellationLocation: finalizationOrCancellationLocation,
+            quantity: quantity || 1,
+            additionalServices: additionalServices || []
         };
-        console.log('=== Servicio creado ===');
-        console.log('newService completo:', newService);
-        console.log('========================');
-
+        // Guardar el estado anterior antes de actualizar (para notificaciones)
+        let oldStatus = null;
         if (serviceId) {
             const serviceIndex = services.findIndex(s => s.id === serviceId);
             if (serviceIndex !== -1) {
+                oldStatus = services[serviceIndex].status; // Guardar estado anterior
                 if (['Finalizado', 'Cancelado'].includes(services[serviceIndex].status) && currentUser.role === 'admin' && serviceId) {
                     if (['Finalizado', 'Cancelado'].includes(services[serviceIndex].status) && currentUser.role === 'admin' && services[serviceIndex].status === newService.status && services[serviceIndex].technicianId === newService.technicianId) {
                         showAlert('No se puede editar un servicio finalizado o cancelado.');
@@ -1854,101 +2841,117 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
         } else {
             services.push(newService);
         }
-        
-        
-        
-                // Intentar guardar el servicio
-        let saveSuccessful = false;
-        try {
-            console.log('🔄 Intentando guardar servicio...');
-            console.log('📊 Datos a guardar:', services);
-            saveServices();
-            console.log('✅ Servicio guardado exitosamente');
-            saveSuccessful = true;
-        } catch (error) {
-            console.error('❌ Error al guardar servicio:', error);
-            console.error('🔍 Detalles del error:', error.message, error.stack);
-            
-            // Verificar si es un problema de localStorage
-            try {
-                const testData = { test: 'data' };
-                localStorage.setItem('test', JSON.stringify(testData));
-                const retrieved = localStorage.getItem('test');
-                localStorage.removeItem('test');
-                console.log('✅ localStorage funciona correctamente');
-            } catch (storageError) {
-                console.error('❌ Problema con localStorage:', storageError);
-                showAlert('❌ Error de almacenamiento. Verifique que el navegador tenga suficiente espacio y que no esté en modo privado.');
-                return;
-            }
-            
-            showAlert('❌ Error al guardar el servicio. Por favor, intente nuevamente.');
-            return;
-        }
-        
-        // Solo continuar si el guardado fue exitoso
-        if (!saveSuccessful) {
-            console.log('❌ No se pudo guardar el servicio, deteniendo proceso');
-            return;
-        }
-        
-        console.log('✅ Servicio guardado exitosamente, continuando con el proceso...');
-        
+        saveServices();
         renderAdminServicesList(services, 1);
         populateAssignServiceDropdown();
         
-        // Enviar notificación si el servicio se finalizó
-        if (status === 'Finalizado' && currentUser.role === 'employee') {
-            const notificationMessage = `El servicio ID: ${finalId} ha sido finalizado por el técnico ${currentUser.username}. Cliente: ${clientName}, Ubicación: ${location}`;
-            console.log(`📨 Enviando notificación de finalización: ${notificationMessage}`);
-            console.log(`👤 Técnico: ${currentUser.username}`);
-            console.log(`🆔 ID del servicio: ${finalId}`);
-            console.log(`👥 Usuarios disponibles:`, users.map(u => ({ id: u.id, username: u.username, role: u.role })));
-            
-            try {
-                sendNotification('admin', notificationMessage);
-                console.log('✅ Notificación enviada exitosamente');
-            } catch (notificationError) {
-                console.error('❌ Error al enviar notificación:', notificationError);
-            }
-        } else {
-            console.log(`ℹ️ No se envía notificación - Status: ${status}, Role: ${currentUser?.role}`);
+        // Cerrar el modal después de guardar exitosamente
+        const modal = bootstrap.Modal.getInstance(document.getElementById('registerServiceModal'));
+        if (modal) {
+            modal.hide();
         }
         
-        // Cerrar el modal después de guardar exitosamente de manera robusta
-        console.log('🔒 Cerrando modal de registro de servicio...');
-        const modalClosed = closeModalSafely('registerServiceModal');
-        if (modalClosed) {
-            console.log('✅ Modal cerrado exitosamente');
-        } else {
-            console.warn('⚠️ No se pudo cerrar el modal automáticamente');
-        }
-        
+        // Limpiar completamente el formulario
         document.getElementById('service-form').reset();
+        document.getElementById('edit-service-id').value = '';
+        document.getElementById('service-date').value = '';
+        document.getElementById('service-time').value = '';
+        document.getElementById('service-code').value = '';
+        document.getElementById('service-type').value = '';
+        document.getElementById('service-description').value = '';
+        document.getElementById('service-quantity').value = '1';
+        document.getElementById('service-client-name').value = '';
+        document.getElementById('service-client-nit').value = '';
+        document.getElementById('service-location').value = '';
+        document.getElementById('service-client-phone').value = '';
+        document.getElementById('service-client-email').value = '';
+        document.getElementById('service-status').value = 'Pendiente';
+        document.getElementById('service-photo').value = '';
+        document.getElementById('service-photo-preview').src = '';
+        document.getElementById('service-photo-preview').classList.add('d-none');
+        
+        // Limpiar servicios adicionales
+        const additionalServicesContainer = document.getElementById('additional-services-container');
+        if (additionalServicesContainer) {
+            additionalServicesContainer.innerHTML = '';
+        }
+        
+        // Limpiar firmas
         clearSignaturePad('client');
         clearSignaturePad('technician');
-        document.getElementById('service-photo-preview').classList.add('d-none');
-        document.getElementById('edit-service-id').value = '';
-        document.getElementById('service-photo').value = '';
         
-        // Limpiar explícitamente el campo de código de servicio
-        const serviceCodeSelect = document.getElementById('service-code');
-        if (serviceCodeSelect) {
-            serviceCodeSelect.value = '';
-            // Asegurar que el dropdown esté habilitado
-            serviceCodeSelect.disabled = false;
-            serviceCodeSelect.style.backgroundColor = '';
+        // Limpiar sugerencias
+        const clientNameSuggestions = document.getElementById('client-name-suggestions');
+        if (clientNameSuggestions) {
+            clientNameSuggestions.innerHTML = '';
+            clientNameSuggestions.style.display = 'none';
         }
+        
+        const serviceCodeSuggestions = document.getElementById('service-code-suggestions');
+        if (serviceCodeSuggestions) {
+            serviceCodeSuggestions.innerHTML = '';
+            serviceCodeSuggestions.style.display = 'none';
+        }
+        
+        // Ocultar secciones dinámicas
+        document.getElementById('photo-evidence-section').classList.add('d-none');
+        document.getElementById('client-signature-section').classList.add('d-none');
+        document.getElementById('technician-signature-section').classList.add('d-none');
 
         if (currentUser.role === 'employee') {
-            console.log('🔄 Actualizando vista de servicios del técnico...');
             renderEmployeeAssignedServices(1);
-            updateEmployeeFilterCounts(); // Actualizar contadores de filtros
-            console.log('✅ Vista de servicios del técnico actualizada');
-        } else if (currentUser.role === 'admin') {
-            console.log('🔄 Actualizando vista de servicios del admin...');
-            renderAdminServicesList(services, 1);
-            console.log('✅ Vista de servicios del admin actualizada');
+        }
+        
+        // Enviar notificación al admin cuando el técnico cambia el estado del servicio
+        if (currentUser.role === 'employee' && serviceId && oldStatus !== null) {
+            if (status !== oldStatus) {
+                // Obtener coordenadas y timestamp para la notificación
+                let notificationCoordinates = null;
+                let notificationTimestamp = null;
+                
+                if (status === 'Finalizado' || status === 'Cancelado') {
+                    if (finalizationOrCancellationLocation) {
+                        notificationCoordinates = {
+                            latitude: finalizationOrCancellationLocation.latitude,
+                            longitude: finalizationOrCancellationLocation.longitude
+                        };
+                        notificationTimestamp = finalizationOrCancellationTime || new Date().toISOString();
+                    }
+                } else if (status === 'En proceso' && startLocation) {
+                    notificationCoordinates = {
+                        latitude: startLocation.latitude,
+                        longitude: startLocation.longitude
+                    };
+                    notificationTimestamp = startTime || new Date().toISOString();
+                }
+                
+                // Formatear timestamp
+                if (!window.globalGeolocation) {
+                    window.globalGeolocation = new EnhancedGeolocation();
+                }
+                const timestamp = notificationTimestamp ? new Date(notificationTimestamp).toLocaleString() : new Date().toLocaleString();
+                const coordinates = notificationCoordinates ? `${notificationCoordinates.latitude.toFixed(8)}, ${notificationCoordinates.longitude.toFixed(8)}` : '';
+                
+                // Crear mensaje según el estado
+                let message = '';
+                if (status === 'Finalizado') {
+                    message = `El técnico ${currentUser.username} ha finalizado el servicio ID: ${serviceId} a las ${timestamp} en la ubicación: ${coordinates}.`;
+                } else if (status === 'Cancelado') {
+                    message = `El técnico ${currentUser.username} ha cancelado el servicio ID: ${serviceId} a las ${timestamp} en la ubicación: ${coordinates}. ${cancellationReason ? `Motivo: ${cancellationReason}` : ''}`;
+                } else {
+                    message = `El servicio ID: ${serviceId} ha sido cambiado de estado de "${oldStatus}" a "${status}" por el técnico ${currentUser.username}.`;
+                }
+                
+                sendNotification('admin', message, notificationCoordinates);
+            }
+        }
+        
+        // Enviar notificación al técnico cuando el admin cancela un servicio
+        if (currentUser.role === 'admin' && status === 'Cancelado' && serviceId && newService.technicianId) {
+            const technicianId = newService.technicianId;
+            const timestamp = new Date().toLocaleString();
+            const message = `El servicio ID: ${serviceId} (Cliente: ${clientName}, Tipo: ${safeType || '-'}) ha sido CANCELADO por el administrador. ${cancellationReason ? `Motivo: ${cancellationReason}` : ''}`;
+            sendNotification(technicianId, message);
         }
         
         // Mostrar mensaje de éxito apropiado según el estado (solo para técnicos)
@@ -1979,22 +2982,15 @@ function saveServiceData(serviceId, date, safeType, description, location, clien
 }
 
 function editService(id) {
-    console.log('🔍 Editando servicio con ID:', id);
-    
     // Recargar datos desde localStorage para asegurar que estén actualizados
     services = JSON.parse(localStorage.getItem('services')) || [];
-    console.log('📊 Datos recargados desde localStorage:', services);
-    
     // Asegurar que services esté cargado
     if (!services || services.length === 0) {
-        console.error('❌ No hay datos de servicios cargados');
         showAlert('Error: No hay datos de servicios disponibles');
         return;
     }
     
     const service = services.find(s => s.id === id);
-    console.log('✅ Servicio encontrado:', service);
-    
     if (service) {
         if (['Finalizado', 'Cancelado'].includes(service.status) && currentUser.role === 'admin') {
             // Allow admin to open, but most fields will be uneditable or should be visually distinct
@@ -2004,18 +3000,27 @@ function editService(id) {
             // return;
         }
         
-        // Cargar datos en el formulario ANTES de abrir el modal
-        forceLoadServiceDataInModal(service);
-        
-        // Abrir el modal
+        // Abrir el modal primero
         const modal = new bootstrap.Modal(document.getElementById('registerServiceModal'));
-        modal.show();
         document.getElementById('registerServiceModalLabel').textContent = 'Editar Servicio';
         
-        console.log('✅ Modal abierto con datos cargados');
+        // Cargar datos después de que el modal esté completamente visible
+        const modalElement = document.getElementById('registerServiceModal');
+        const loadData = () => {
+            forceLoadServiceDataInModal(service);
+            modalElement.removeEventListener('shown.bs.modal', loadData);
+        };
         
+        // Si el modal ya está visible, cargar datos inmediatamente
+        if (modalElement.classList.contains('show')) {
+            forceLoadServiceDataInModal(service);
+        } else {
+            // Si no está visible, esperar a que se muestre completamente
+            modalElement.addEventListener('shown.bs.modal', loadData, { once: true });
+        }
+        
+        modal.show();
     } else {
-        console.error('❌ No se encontró el servicio con ID:', id);
         showAlert('Error: No se encontró el servicio a editar');
     }
 }
@@ -2024,7 +3029,8 @@ function togglePhotoAndSignatureSections(status, forTechnicianView = false) {
     const photoSection = document.getElementById('photo-evidence-section');
     const clientSignatureSection = document.getElementById('client-signature-section');
     const technicianSignatureSection = document.getElementById('technician-signature-section');
-    const technicianField = document.getElementById('service-technician-field');
+    // Campo de técnico eliminado - ya no se usa
+    // const technicianField = document.getElementById('service-technician-field');
 
     // Always hide by default
     photoSection.classList.add('d-none');
@@ -2095,7 +3101,134 @@ function deleteService(id) {
             populateAssignServiceDropdown();
             renderAssignedServicesList(1);
             renderEmployeeAssignedServices(1);
-            //showAlert('Servicio eliminado exitosamente.'); // Confirmation for admin
+        }
+    });
+}
+
+// Funciones para eliminar servicios masivamente
+function openDeleteServicesModal() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteServicesModal'));
+    const deleteServicesList = document.getElementById('delete-services-list');
+    const searchInput = document.getElementById('search-delete-services');
+    if (searchInput) searchInput.value = '';
+    deleteServicesList.innerHTML = '';
+    
+    // Mostrar todos los servicios con checkboxes
+    services.forEach(service => {
+        const technicianName = service.technicianId ? getTechnicianNameById(service.technicianId) : 'Sin asignar';
+        const serviceCard = document.createElement('div');
+        serviceCard.className = 'card mb-2';
+        serviceCard.style.border = '1px solid #dee2e6';
+        serviceCard.innerHTML = `
+            <div class="card-body d-flex align-items-center">
+                <input type="checkbox" class="form-check-input me-3" value="${service.id}" id="service-checkbox-${service.id}" style="width: 20px; height: 20px;">
+                <div class="flex-grow-1">
+                    <strong>ID: ${service.id}</strong>
+                    <div class="text-muted">Cliente: ${service.clientName || 'N/A'}</div>
+                    <div class="text-muted">Tipo: ${service.safeType || 'N/A'}</div>
+                    <div class="text-muted">Estado: ${service.status || 'N/A'}</div>
+                    <div class="text-muted">Técnico: ${technicianName}</div>
+                </div>
+            </div>
+        `;
+        deleteServicesList.appendChild(serviceCard);
+    });
+    
+    modal.show();
+}
+
+function selectAllServices() {
+    const checkboxes = document.querySelectorAll('#delete-services-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllServices() {
+    const checkboxes = document.querySelectorAll('#delete-services-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+function confirmDeleteServices() {
+    const checkboxes = document.querySelectorAll('#delete-services-list input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showAlert('Por favor, selecciona al menos un servicio para eliminar.');
+        return;
+    }
+    
+    // Verificar si hay servicios finalizados o cancelados
+    const servicesToDelete = services.filter(s => selectedIds.includes(s.id));
+    const finishedServices = servicesToDelete.filter(s => ['Finalizado', 'Cancelado'].includes(s.status));
+    
+    if (finishedServices.length > 0) {
+        showAlert(`No se pueden eliminar ${finishedServices.length} servicio(s) porque están finalizados o cancelados.`);
+        return;
+    }
+    
+    showConfirm(`¿Estás seguro de que quieres eliminar ${selectedIds.length} servicio(s)? Esta acción no se puede deshacer.`, (result) => {
+        if (result) {
+            // Cerrar modal de selección
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteServicesModal'));
+            modal.hide();
+            
+            // Inicializar modal de progreso
+            initProgressModal('delete', selectedIds.length);
+            
+            let processed = 0;
+            let successes = 0;
+            let errors = 0;
+            
+            // Función para eliminar cada servicio de forma asíncrona
+            function deleteService(index) {
+                if (index >= selectedIds.length) {
+                    // Eliminación completada
+                    saveServices();
+                    
+                    renderAdminServicesList(services, 1);
+                    populateAssignServiceDropdown();
+                    renderAssignedServicesList(1);
+                    renderEmployeeAssignedServices(1);
+                    
+                    completeProgress('delete', successes, 
+                        `Eliminación completada. ${successes} registro(s) eliminado(s).`, 
+                        successes, 0, errors);
+                    return;
+                }
+                
+                const serviceId = selectedIds[index];
+                const serviceToDelete = services.find(s => s.id === serviceId);
+                
+                // Send notification to technician if service was assigned
+                if (serviceToDelete && serviceToDelete.technicianId) {
+                    const technicianName = getTechnicianNameById(serviceToDelete.technicianId);
+                    const message = `El servicio ID: ${serviceToDelete.id} (Cliente: ${serviceToDelete.clientName}, Tipo: ${serviceToDelete.safeType}) ha sido ELIMINADO por el administrador. Ya no está asignado a ti.`;
+                    sendNotification(serviceToDelete.technicianId, message);
+                }
+                
+                const initialLength = services.length;
+                services = services.filter(s => s.id !== serviceId);
+                
+                if (services.length < initialLength) {
+                    successes++;
+                } else {
+                    errors++;
+                }
+                
+                processed++;
+                updateProgress(processed, selectedIds.length, 
+                    `Eliminando registro ${processed} de ${selectedIds.length}...`, 
+                    successes, 0, errors);
+                
+                // Procesar siguiente servicio con pequeño delay
+                setTimeout(() => deleteService(index + 1), 10);
+            }
+            
+            // Iniciar eliminación
+            deleteService(0);
         }
     });
 }
@@ -2103,41 +3236,251 @@ function deleteService(id) {
 function viewServiceDetails(id) {
     const service = services.find(s => s.id === id);
     if (service) {
+        // Formatear fechas
+        const serviceDate = formatServiceDate(service.date);
+        const serviceTime = formatServiceTime(service.time);
+        const clientNit = getClientNitByName(service.clientName);
+        const clientEmail = getClientEmailByName(service.clientName);
+        const technicianName = getTechnicianNameById(service.technicianId);
+        
+        // Formatear fecha/hora de inicio
+        let startDateTime = '-';
+        if (service.startTime) {
+            const startDate = new Date(service.startTime);
+            const day = String(startDate.getDate()).padStart(2, '0');
+            const month = String(startDate.getMonth() + 1).padStart(2, '0');
+            const year = startDate.getFullYear();
+            const hours = startDate.getHours();
+            const minutes = String(startDate.getMinutes()).padStart(2, '0');
+            const seconds = String(startDate.getSeconds()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+            const hours12 = hours % 12 || 12;
+            startDateTime = `${day}/${month}/${year}, ${String(hours12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+        }
+        
+        // Formatear fecha/hora de finalización
+        let finalizationDateTime = '-';
+        if (service.finalizationOrCancellationTime) {
+            const finalDate = new Date(service.finalizationOrCancellationTime);
+            const day = String(finalDate.getDate()).padStart(2, '0');
+            const month = String(finalDate.getMonth() + 1).padStart(2, '0');
+            const year = finalDate.getFullYear();
+            const hours = finalDate.getHours();
+            const minutes = String(finalDate.getMinutes()).padStart(2, '0');
+            const seconds = String(finalDate.getSeconds()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+            const hours12 = hours % 12 || 12;
+            finalizationDateTime = `${day}/${month}/${year}, ${String(hours12).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+        }
+        
+        // Determinar clase de estado para el botón
+        let statusButtonClass = 'btn-status-service';
+        let statusButtonColor = '';
+        switch(service.status) {
+            case 'Finalizado':
+                statusButtonColor = 'btn-status-finalizado';
+                break;
+            case 'En proceso':
+                statusButtonColor = 'btn-status-en-proceso';
+                break;
+            case 'Pendiente':
+                statusButtonColor = 'btn-status-pendiente';
+                break;
+            case 'Cancelado':
+                statusButtonColor = 'btn-status-cancelado';
+                break;
+        }
+        
         const detailsHtml = `
-            <p><strong>ID Servicio:</strong> ${service.id}</p>
-            ${service.serviceCode ? `<p><strong>Código de Servicio:</strong> ${service.serviceCode}</p>` : ''}
-            <p><strong>Fecha:</strong> ${service.date}</p>
-            <p><strong>Tipo de Servicio:</strong> ${service.safeType}</p>
-            ${service.description ? `<p><strong>Descripción:</strong> ${service.description}</p>` : ''}
-            <p><strong>Ubicación:</strong> ${service.location}
-                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(service.location)}" 
-                   target="_blank" class="btn-google-maps" title="Abrir en Google Maps">
-                    <i class="bi bi-geo-alt"></i> Ver en Maps
-                </a>
-            </p>
-            <p><strong>Técnico Encargado:</strong> ${getTechnicianNameById(service.technicianId)}</p>
-            <p><strong>Nombre del Cliente:</strong> ${service.clientName}</p>
-            <p><strong>Teléfono del Cliente:</strong> ${service.clientPhone}</p>
-            <p><strong>Estado:</strong> ${service.status}</p>
-            ${service.cancellationReason ? `<p><strong>Motivo de Cancelación:</strong> ${service.cancellationReason}</p>` : ''}
-            ${service.startTime ? `<p><strong>Hora de Inicio:</strong> ${new Date(service.startTime).toLocaleString()}</p>` : ''}
-            ${service.startLocation ? `<p><strong>Ubicación de Inicio:</strong> Lat: ${service.startLocation.latitude.toFixed(8)}, Lon: ${service.startLocation.longitude.toFixed(8)}${service.startLocation.accuracy ? ` (Precisión: ±${Math.round(service.startLocation.accuracy)}m)` : ''}${service.startLocation.altitude ? ` | Altitud: ${service.startLocation.altitude.toFixed(1)}m` : ''}${service.startLocation.speed ? ` | Velocidad: ${service.startLocation.speed.toFixed(1)}m/s` : ''}${service.startLocation.heading ? ` | Dirección: ${service.startLocation.heading.toFixed(1)}°` : ''}
-                <a href="https://www.google.com/maps?q=${service.startLocation.latitude},${service.startLocation.longitude}" 
-                   target="_blank" class="btn-google-maps" title="Abrir coordenadas de inicio en Google Maps">
-                    <i class="bi bi-geo-alt"></i> Ver en Maps
-                </a>
-            </p>` : ''}
-            ${service.finalizationOrCancellationTime ? `<p><strong>Fecha/Hora de Finalización/Cancelación:</strong> ${new Date(service.finalizationOrCancellationTime).toLocaleString()}</p>` : ''}
-            ${service.finalizationOrCancellationLocation ? `<p><strong>Ubicación de Finalización/Cancelación:</strong> Lat: ${service.finalizationOrCancellationLocation.latitude.toFixed(8)}, Lon: ${service.finalizationOrCancellationLocation.longitude.toFixed(8)}${service.finalizationOrCancellationLocation.accuracy ? ` (Precisión: ±${Math.round(service.finalizationOrCancellationLocation.accuracy)}m)` : ''}${service.finalizationOrCancellationLocation.altitude ? ` | Altitud: ${service.finalizationOrCancellationLocation.altitude.toFixed(1)}m` : ''}${service.finalizationOrCancellationLocation.speed ? ` | Velocidad: ${service.finalizationOrCancellationLocation.speed.toFixed(1)}m/s` : ''}${service.finalizationOrCancellationLocation.heading ? ` | Dirección: ${service.finalizationOrCancellationLocation.heading.toFixed(1)}°` : ''}
-                <a href="https://www.google.com/maps?q=${service.finalizationOrCancellationLocation.latitude},${service.finalizationOrCancellationLocation.longitude}" 
-                   target="_blank" class="btn-google-maps" title="Abrir coordenadas de finalización en Google Maps">
-                    <i class="bi bi-geo-alt"></i> Ver en Maps
-                </a>
-            </p>` : ''}
-            ${service.photo ? `<p><strong>Evidencia Fotográfica:</strong><br><img src="${service.photo}" class="service-photo-evidence" alt="Evidencia"></p>` : ''}
-            ${service.clientSignature ? `<p><strong>Firma del Cliente:</strong><br><img src="${service.clientSignature}" class="img-fluid" alt="Firma del Cliente"></p>` : ''}
-            ${service.technicianSignature ? `<p><strong>Firma del Técnico:</strong><br><img src="${service.technicianSignature}" class="img-fluid" alt="Firma del Técnico"></p>` : ''}
-
+            <div class="row g-3">
+                <!-- Columna izquierda: Información del Servicio -->
+                <div class="col-md-6">
+                    <div class="card mb-3" style="height: 100%;">
+                        <div class="card-header d-flex align-items-center justify-content-start" style="background-color: #1e40af; color: white;">
+                            <i class="bi bi-info-circle me-2" style="font-size: 1.2rem;"></i>
+                            <span class="ms-0">Información del Servicio</span>
+                        </div>
+                        <div class="card-body" style="padding: 1.25rem;">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="mb-3"><strong>ID Servicio:</strong><br>${service.id}</div>
+                                    ${service.serviceCode ? `<div class="mb-3"><strong>Código de Servicio:</strong><br>${service.serviceCode}</div>` : ''}
+                                    <div class="mb-3"><strong>Tipo de Servicio:</strong><br>${service.safeType || '-'}</div>
+                                    <div class="mb-3"><strong>Cantidad:</strong><br>${service.quantity || 1}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3"><strong>Fecha de Servicio:</strong><br>${serviceDate}</div>
+                                    <div class="mb-3"><strong>Hora de Servicio:</strong><br>${serviceTime}</div>
+                                </div>
+                            </div>
+                            ${service.description ? `<div class="mb-3"><strong>Descripción:</strong><br>${service.description}</div>` : ''}
+                            <div class="mb-0">
+                                <strong>Ubicación:</strong><br>${service.location || '-'}
+                                ${service.location ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(service.location)}" target="_blank" class="btn-google-maps ms-2 mt-2 d-inline-block" title="Abrir en Google Maps"><i class="bi bi-geo-alt"></i> Ver en Maps</a>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Columna derecha: Estado, Cliente y Técnico -->
+                <div class="col-md-6 d-flex flex-column">
+                    <!-- Tarjeta Estado -->
+                    <div class="card mb-3 flex-fill">
+                        <div class="card-header d-flex align-items-center justify-content-start" style="background-color: #1e40af; color: white;">
+                            <i class="bi bi-flag me-2" style="font-size: 1.2rem;"></i>
+                            <span class="ms-0">Estado</span>
+                        </div>
+                        <div class="card-body text-center d-flex align-items-center justify-content-center" style="flex: 1;">
+                            <button class="btn ${statusButtonClass} ${statusButtonColor} btn-sm" disabled style="width: auto; padding: 0.25rem 1rem; font-size: 0.875rem;">${service.status || '-'}</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Tarjeta Información del Cliente -->
+                    <div class="card mb-3 flex-fill">
+                        <div class="card-header d-flex align-items-center justify-content-start" style="background-color: #1e40af; color: white;">
+                            <i class="bi bi-person me-2" style="font-size: 1.2rem;"></i>
+                            <span class="ms-0">Información del Cliente</span>
+                        </div>
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <div class="mb-2"><strong>Nombre:</strong> ${service.clientName || '-'}</div>
+                            <div class="mb-2"><strong>NIT o CC:</strong> ${clientNit}</div>
+                            <div class="mb-2"><strong>Teléfono:</strong> ${service.clientPhone || '-'}</div>
+                            <div class="mb-2"><strong>Email:</strong> ${clientEmail}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tarjeta Información del Técnico -->
+                    <div class="card mb-3 flex-fill">
+                        <div class="card-header d-flex align-items-center justify-content-start" style="background-color: #1e40af; color: white;">
+                            <i class="bi bi-person-gear me-2" style="font-size: 1.2rem;"></i>
+                            <span class="ms-0">Información del Técnico</span>
+                        </div>
+                        <div class="card-body d-flex align-items-center justify-content-center" style="flex: 1;">
+                            <div><strong>Técnico Encargado:</strong> ${technicianName}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Servicios Adicionales -->
+            <div class="card mb-3 mt-4">
+                <div class="card-header d-flex align-items-center justify-content-start" style="background-color: #1e40af; color: white;">
+                    <i class="bi bi-plus-circle me-2" style="font-size: 1.2rem;"></i>
+                    <span class="ms-0">Servicios Adicionales</span>
+                </div>
+                <div class="card-body">
+                    ${service.additionalServices && Array.isArray(service.additionalServices) && service.additionalServices.length > 0 ? `
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Tipo</th>
+                                        <th>Descripción</th>
+                                        <th>Cantidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${service.additionalServices.map(additionalService => `
+                                        <tr>
+                                            <td>${additionalService.code || '-'}</td>
+                                            <td>${additionalService.type || '-'}</td>
+                                            <td>${additionalService.description || '-'}</td>
+                                            <td>${additionalService.quantity || 1}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    ` : `
+                        <p class="text-muted mb-0">No hay servicios adicionales registrados</p>
+                    `}
+                </div>
+            </div>
+            
+            <!-- Información de Tiempo y Geolocalización -->
+            ${service.startTime || service.finalizationOrCancellationTime ? `
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-start" style="background-color: #1e40af; color: white;">
+                    <i class="bi bi-clock me-2" style="font-size: 1.2rem;"></i>
+                    <span class="ms-0">Información de Tiempo y Geolocalización</span>
+                </div>
+                <div class="card-body">
+                    ${service.startTime ? `
+                    <div class="mb-3">
+                        <strong>Fecha/Hora de Inicio:</strong> ${startDateTime}
+                    </div>
+                    ${service.startLocation ? `
+                    <div class="mb-3">
+                        <strong>Ubicación de Inicio:</strong> Lat: ${service.startLocation.latitude.toFixed(8)}, Lon: ${service.startLocation.longitude.toFixed(8)}${service.startLocation.accuracy ? ` (Precisión: ±${Math.round(service.startLocation.accuracy)}m)` : ''}
+                        <a href="https://www.google.com/maps?q=${service.startLocation.latitude},${service.startLocation.longitude}" target="_blank" class="btn-google-maps ms-2" title="Abrir coordenadas de inicio en Google Maps">
+                            <i class="bi bi-geo-alt"></i> Ver en Maps
+                        </a>
+                    </div>
+                    ` : ''}
+                    ` : ''}
+                    ${service.finalizationOrCancellationTime ? `
+                    <div class="mb-3">
+                        <strong>Fecha/Hora de Finalización/Cancelación:</strong> ${finalizationDateTime}
+                    </div>
+                    ${service.finalizationOrCancellationLocation ? `
+                    <div class="mb-3">
+                        <strong>Ubicación de Finalización/Cancelación:</strong> Lat: ${service.finalizationOrCancellationLocation.latitude.toFixed(8)}, Lon: ${service.finalizationOrCancellationLocation.longitude.toFixed(8)}${service.finalizationOrCancellationLocation.accuracy ? ` (Precisión: ±${Math.round(service.finalizationOrCancellationLocation.accuracy)}m)` : ''}
+                        <a href="https://www.google.com/maps?q=${service.finalizationOrCancellationLocation.latitude},${service.finalizationOrCancellationLocation.longitude}" target="_blank" class="btn-google-maps ms-2" title="Abrir coordenadas de finalización en Google Maps">
+                            <i class="bi bi-geo-alt"></i> Ver en Maps
+                        </a>
+                    </div>
+                    ` : ''}
+                    ` : ''}
+                </div>
+            </div>
+            ` : ''}
+            
+            <!-- Evidencias -->
+            ${service.photo || service.clientSignature || service.technicianSignature ? `
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-start" style="background-color: #1e40af; color: white;">
+                    <i class="bi bi-file-earmark-image me-2" style="font-size: 1.2rem;"></i>
+                    <span class="ms-0">Evidencias</span>
+                </div>
+                <div class="card-body">
+                    ${service.photo ? `
+                    <div class="mb-3">
+                        <strong>Evidencia Fotográfica:</strong>
+                        <div class="mt-2 text-center">
+                            <img src="${service.photo}" class="rounded border" alt="Evidencia Fotográfica" style="max-width: 300px; width: 100%; height: auto;">
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${service.clientSignature || service.technicianSignature ? `
+                    <div class="row">
+                        ${service.clientSignature ? `
+                        <div class="col-md-6 mb-3">
+                            <strong>Cliente:</strong>
+                            <div class="mt-2 border rounded p-2" style="background-color: white;">
+                                <img src="${service.clientSignature}" class="img-fluid" alt="Firma del Cliente" style="max-width: 100%; height: auto;">
+                            </div>
+                        </div>
+                        ` : ''}
+                        ${service.technicianSignature ? `
+                        <div class="col-md-6 mb-3">
+                            <strong>Técnico:</strong>
+                            <div class="mt-2 border rounded p-2" style="background-color: white;">
+                                <img src="${service.technicianSignature}" class="img-fluid" alt="Firma del Técnico" style="max-width: 100%; height: auto;">
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            ` : ''}
+            
+            ${service.cancellationReason ? `
+            <div class="alert alert-warning">
+                <strong>Motivo de Cancelación:</strong> ${service.cancellationReason}
+            </div>
+            ` : ''}
         `;
         document.getElementById('view-service-details').innerHTML = detailsHtml;
         const modal = new bootstrap.Modal(document.getElementById('viewServiceModal'));
@@ -2149,6 +3492,606 @@ function viewServiceDetails(id) {
 function getTechnicianNameById(id) {
     const tech = users.find(u => u.id === id);
     return tech ? tech.username : 'No Asignado';
+}
+
+function getClientNitByName(clientName) {
+    if (!clientName) return '-';
+    const client = clients.find(c => c.name === clientName);
+    return client ? (client.nit || '-') : '-';
+}
+
+function getClientEmailByName(clientName) {
+    if (!clientName) return '-';
+    const client = clients.find(c => c.name === clientName);
+    return client ? (client.email || '-') : '-';
+}
+
+// Función para cargar los datos del cliente cuando se ingresa el nombre
+function loadClientData() {
+    const clientNameInput = document.getElementById('service-client-name');
+    const clientName = clientNameInput ? clientNameInput.value.trim() : '';
+    
+    if (!clientName) return;
+    
+    // Buscar el cliente por nombre
+    const client = clients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+    
+    if (client) {
+        // Llenar automáticamente los campos del cliente
+        const nitInput = document.getElementById('service-client-nit');
+        const locationInput = document.getElementById('service-location');
+        const phoneInput = document.getElementById('service-client-phone');
+        const emailInput = document.getElementById('service-client-email');
+        
+        if (nitInput) nitInput.value = client.nit || '';
+        if (locationInput) locationInput.value = client.address || '';
+        if (phoneInput) phoneInput.value = client.phone || '';
+        if (emailInput) emailInput.value = client.email || '';
+    }
+}
+
+// Función para buscar y sugerir códigos de servicio
+// Función para mostrar lista desplegable de códigos de servicio
+function showServiceCodeDropdown(inputElement, suggestionsDiv, isAdditional = false) {
+    if (!inputElement || !suggestionsDiv || !costoServicios || costoServicios.length === 0) return;
+    
+    // Si ya está visible, no hacer nada
+    if (suggestionsDiv.style.display === 'block') return;
+    
+    // Mostrar todos los servicios
+    suggestionsDiv.innerHTML = '';
+    let selectedIndex = -1;
+    
+    costoServicios.forEach((servicio, index) => {
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action service-code-item';
+        item.setAttribute('data-index', index);
+        const descripcion = servicio.descripcion || servicio.tipo || 'Sin descripción';
+        item.innerHTML = `
+            <div class="service-code-option">${servicio.codigo} - ${descripcion}</div>
+        `;
+        item.onclick = (e) => {
+            e.preventDefault();
+            selectServiceCode(servicio, inputElement, suggestionsDiv, isAdditional);
+        };
+        item.onmouseenter = function() {
+            // Remover selección anterior
+            suggestionsDiv.querySelectorAll('.service-code-item').forEach(el => el.classList.remove('active'));
+            this.classList.add('active');
+            selectedIndex = index;
+        };
+        suggestionsDiv.appendChild(item);
+    });
+    
+    // Mostrar solo los primeros 3 visualmente, pero permitir scroll
+    suggestionsDiv.style.display = 'block';
+    suggestionsDiv.style.maxHeight = '200px'; // Aproximadamente 3 elementos
+    suggestionsDiv.style.overflowY = 'auto';
+    
+    // Guardar referencia para navegación con teclado
+    inputElement._serviceCodeDropdown = {
+        suggestionsDiv: suggestionsDiv,
+        items: suggestionsDiv.querySelectorAll('.service-code-item'),
+        selectedIndex: selectedIndex,
+        isAdditional: isAdditional
+    };
+}
+
+// Función para seleccionar un código de servicio
+function selectServiceCode(servicio, inputElement, suggestionsDiv, isAdditional) {
+    inputElement.value = servicio.codigo;
+    suggestionsDiv.style.display = 'none';
+    
+    if (isAdditional) {
+        loadAdditionalServiceDetails(inputElement);
+    } else {
+        loadServiceDetails();
+    }
+}
+
+// Función para manejar navegación con teclado
+function handleServiceCodeKeyboard(event, inputElement) {
+    const dropdown = inputElement._serviceCodeDropdown;
+    if (!dropdown || dropdown.suggestionsDiv.style.display !== 'block') return;
+    
+    const items = Array.from(dropdown.items);
+    if (items.length === 0) return;
+    
+    event.preventDefault();
+    
+    switch(event.key) {
+        case 'ArrowDown':
+            dropdown.selectedIndex = (dropdown.selectedIndex + 1) % items.length;
+            items[dropdown.selectedIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            items.forEach((el, idx) => {
+                el.classList.toggle('active', idx === dropdown.selectedIndex);
+            });
+            break;
+        case 'ArrowUp':
+            dropdown.selectedIndex = dropdown.selectedIndex <= 0 ? items.length - 1 : dropdown.selectedIndex - 1;
+            items[dropdown.selectedIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            items.forEach((el, idx) => {
+                el.classList.toggle('active', idx === dropdown.selectedIndex);
+            });
+            break;
+        case 'Enter':
+            if (dropdown.selectedIndex >= 0 && dropdown.selectedIndex < items.length) {
+                const servicio = costoServicios[dropdown.selectedIndex];
+                selectServiceCode(servicio, inputElement, dropdown.suggestionsDiv, dropdown.isAdditional);
+            }
+            break;
+        case 'Escape':
+            dropdown.suggestionsDiv.style.display = 'none';
+            break;
+    }
+}
+
+function searchServiceCode() {
+    const searchInput = document.getElementById('service-code');
+    const suggestionsDiv = document.getElementById('service-code-suggestions');
+    
+    if (!searchInput || !suggestionsDiv) return;
+    
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    
+    // Si hay texto, filtrar; si no, mostrar todos
+    let matches = costoServicios;
+    if (searchTerm.length > 0) {
+        matches = costoServicios.filter(s => 
+            s.codigo.toLowerCase().includes(searchTerm) ||
+            (s.tipo && s.tipo.toLowerCase().includes(searchTerm)) ||
+            (s.descripcion && s.descripcion.toLowerCase().includes(searchTerm))
+        );
+    }
+    
+    if (matches.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
+    }
+    
+    // Mostrar sugerencias filtradas
+    suggestionsDiv.innerHTML = '';
+    let selectedIndex = -1;
+    
+    matches.forEach((servicio, index) => {
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action service-code-item';
+        item.setAttribute('data-index', index);
+        const descripcion = servicio.descripcion || servicio.tipo || 'Sin descripción';
+        item.innerHTML = `
+            <div class="service-code-option">${servicio.codigo} - ${descripcion}</div>
+        `;
+        item.onclick = (e) => {
+            e.preventDefault();
+            selectServiceCode(servicio, searchInput, suggestionsDiv, false);
+        };
+        item.onmouseenter = function() {
+            suggestionsDiv.querySelectorAll('.service-code-item').forEach(el => el.classList.remove('active'));
+            this.classList.add('active');
+            selectedIndex = index;
+        };
+        suggestionsDiv.appendChild(item);
+    });
+    
+    suggestionsDiv.style.display = 'block';
+    suggestionsDiv.style.maxHeight = '200px';
+    suggestionsDiv.style.overflowY = 'auto';
+    
+    // Actualizar referencia para navegación con teclado
+    searchInput._serviceCodeDropdown = {
+        suggestionsDiv: suggestionsDiv,
+        items: suggestionsDiv.querySelectorAll('.service-code-item'),
+        selectedIndex: selectedIndex,
+        isAdditional: false,
+        matches: matches
+    };
+}
+
+// Función para buscar y sugerir nombres de clientes
+function searchClientName() {
+    const searchInput = document.getElementById('service-client-name');
+    const suggestionsDiv = document.getElementById('client-name-suggestions');
+    
+    if (!searchInput || !suggestionsDiv) return;
+    
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    
+    if (searchTerm.length < 1) {
+        suggestionsDiv.style.display = 'none';
+        return;
+    }
+    
+    // Filtrar clientes que coincidan
+    const matches = clients.filter(c => 
+        c.name.toLowerCase().includes(searchTerm)
+    );
+    
+    if (matches.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
+    }
+    
+    // Mostrar sugerencias
+    suggestionsDiv.innerHTML = '';
+    matches.slice(0, 10).forEach(client => {
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action';
+        item.innerHTML = `<div class="fw-bold">${client.name}</div>`;
+        item.onclick = (e) => {
+            e.preventDefault();
+            searchInput.value = client.name;
+            suggestionsDiv.style.display = 'none';
+            loadClientData();
+        };
+        suggestionsDiv.appendChild(item);
+    });
+    
+    suggestionsDiv.style.display = 'block';
+}
+
+// Función para agregar servicio adicional
+function addAdditionalService() {
+    const container = document.getElementById('additional-services-container');
+    if (!container) return;
+    
+    const serviceIndex = container.children.length;
+    const additionalServiceDiv = document.createElement('div');
+    additionalServiceDiv.className = 'mb-3 p-3 border rounded bg-light';
+    additionalServiceDiv.setAttribute('data-service-index', serviceIndex);
+    const suggestionsId = `additional-service-suggestions-${serviceIndex}`;
+    additionalServiceDiv.innerHTML = `
+        <!-- Primera fila: Código, Tipo, Cantidad -->
+        <div class="row mb-3">
+            <div class="col-md-6 mb-3">
+                <div class="service-code-selector">
+                    <label class="form-label fw-bold service-code-label">CÓDIGO DE SERVICIO ADICIONAL</label>
+                    <input type="text" class="form-control service-code-input additional-service-code" placeholder="Escribir para buscar código..." name="additional-service-code-${serviceIndex}" data-service-index="${serviceIndex}" oninput="searchAdditionalServiceCode(this)" onchange="loadAdditionalServiceDetails(this)" onblur="setTimeout(() => { const div = document.getElementById('${suggestionsId}'); if(div) div.style.display = 'none'; }, 200);">
+                    <div class="service-code-suggestions" id="${suggestionsId}" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label fw-bold">TIPO DE SERVICIO</label>
+                <input type="text" class="form-control additional-service-type" placeholder="" name="additional-service-type-${serviceIndex}" readonly>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label fw-bold">CANTIDAD</label>
+                <input type="number" class="form-control additional-service-quantity" placeholder="1" name="additional-service-quantity-${serviceIndex}" min="1" value="1">
+            </div>
+        </div>
+        <!-- Segunda fila: Descripción y Botón Eliminar -->
+        <div class="row">
+            <div class="col-md-10 mb-3">
+                <label class="form-label fw-bold">DESCRIPCIÓN</label>
+                <input type="text" class="form-control additional-service-description" placeholder="" name="additional-service-description-${serviceIndex}" readonly>
+            </div>
+            <div class="col-md-2 mb-3 d-flex align-items-end">
+                <button type="button" class="btn btn-link text-danger p-0" onclick="this.closest('.bg-light').remove()" style="text-decoration: none;">
+                    <i class="bi bi-trash me-1"></i> ELIMINAR
+                </button>
+            </div>
+        </div>
+    `;
+    container.appendChild(additionalServiceDiv);
+    
+    // Agregar event listeners para click y teclado
+    const additionalCodeInput = additionalServiceDiv.querySelector('.additional-service-code');
+    const additionalSuggestionsDiv = document.getElementById(suggestionsId);
+    
+    if (additionalCodeInput && additionalSuggestionsDiv) {
+        // Mostrar lista al hacer click
+        additionalCodeInput.addEventListener('click', function() {
+            if (costoServicios && costoServicios.length > 0) {
+                showServiceCodeDropdown(additionalCodeInput, additionalSuggestionsDiv, true);
+            }
+        });
+        
+        // Navegación con teclado
+        additionalCodeInput.addEventListener('keydown', function(e) {
+            handleServiceCodeKeyboard(e, additionalCodeInput);
+        });
+    }
+}
+
+// Función para buscar y sugerir códigos de servicio adicional
+function searchAdditionalServiceCode(inputElement) {
+    const serviceIndex = inputElement.getAttribute('data-service-index');
+    const suggestionsDiv = document.getElementById(`additional-service-suggestions-${serviceIndex}`);
+    
+    if (!inputElement || !suggestionsDiv) return;
+    
+    const searchTerm = inputElement.value.toLowerCase().trim();
+    
+    // Si hay texto, filtrar; si no, mostrar todos
+    let matches = costoServicios;
+    if (searchTerm.length > 0) {
+        matches = costoServicios.filter(s => 
+            s.codigo.toLowerCase().includes(searchTerm) ||
+            (s.tipo && s.tipo.toLowerCase().includes(searchTerm)) ||
+            (s.descripcion && s.descripcion.toLowerCase().includes(searchTerm))
+        );
+    }
+    
+    if (matches.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
+    }
+    
+    // Mostrar sugerencias filtradas
+    suggestionsDiv.innerHTML = '';
+    let selectedIndex = -1;
+    
+    matches.forEach((servicio, index) => {
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action service-code-item';
+        item.setAttribute('data-index', index);
+        const descripcion = servicio.descripcion || servicio.tipo || 'Sin descripción';
+        item.innerHTML = `
+            <div class="service-code-option">${servicio.codigo} - ${descripcion}</div>
+        `;
+        item.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            selectServiceCode(servicio, inputElement, suggestionsDiv, true);
+        };
+        item.onmouseenter = function() {
+            suggestionsDiv.querySelectorAll('.service-code-item').forEach(el => el.classList.remove('active'));
+            this.classList.add('active');
+            selectedIndex = index;
+        };
+        suggestionsDiv.appendChild(item);
+    });
+    
+    suggestionsDiv.style.display = 'block';
+    suggestionsDiv.style.maxHeight = '200px';
+    suggestionsDiv.style.overflowY = 'auto';
+    
+    // Actualizar referencia para navegación con teclado
+    inputElement._serviceCodeDropdown = {
+        suggestionsDiv: suggestionsDiv,
+        items: suggestionsDiv.querySelectorAll('.service-code-item'),
+        selectedIndex: selectedIndex,
+        isAdditional: true,
+        matches: matches
+    };
+}
+
+// Función para cargar los detalles del servicio adicional seleccionado
+function loadAdditionalServiceDetails(inputElement) {
+    if (!inputElement) {
+        return;
+    }
+    
+    const serviceCode = inputElement.value ? inputElement.value.trim() : '';
+    // Buscar el contenedor principal del servicio adicional (el div con bg-light)
+    const serviceDiv = inputElement.closest('.bg-light');
+    
+    if (!serviceDiv) {
+        return;
+    }
+    
+    const typeInput = serviceDiv.querySelector('.additional-service-type');
+    const descriptionInput = serviceDiv.querySelector('.additional-service-description');
+    const serviceIndex = inputElement.getAttribute('data-service-index');
+    const suggestionsDiv = serviceIndex ? document.getElementById(`additional-service-suggestions-${serviceIndex}`) : null;
+    
+    if (suggestionsDiv) {
+        suggestionsDiv.style.display = 'none';
+    }
+    
+    // Buscar el servicio en costoServicios
+    if (serviceCode && costoServicios && Array.isArray(costoServicios) && costoServicios.length > 0) {
+        // Buscar exacto primero
+        let servicio = costoServicios.find(s => s.codigo === serviceCode);
+        // Si no se encuentra, buscar case-insensitive
+        if (!servicio) {
+            servicio = costoServicios.find(s => s.codigo && s.codigo.toLowerCase() === serviceCode.toLowerCase());
+        }
+        
+        if (servicio) {
+            if (typeInput) {
+                typeInput.value = servicio.tipo || '';
+            }
+            if (descriptionInput) {
+                descriptionInput.value = servicio.descripcion || '';
+            }
+        } else {
+            // Si no se encuentra, limpiar campos para que el usuario pueda escribir manualmente
+            if (typeInput) {
+                typeInput.value = '';
+            }
+            if (descriptionInput) {
+                descriptionInput.value = '';
+            }
+        }
+    } else {
+        // Si no hay código o no hay costoServicios, limpiar campos
+        if (typeInput) {
+            typeInput.value = '';
+        }
+        if (descriptionInput) {
+            descriptionInput.value = '';
+        }
+    }
+}
+
+function formatServiceDate(dateString) {
+    if (!dateString) return '-';
+    
+    // Si ya está en formato dd/mm/yyyy, devolverlo tal cual
+    if (typeof dateString === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        return dateString;
+    }
+    
+    // Si está en formato ISO (YYYY-MM-DD), convertir directamente sin usar Date para evitar problemas de zona horaria
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    }
+    
+    // Intentar parsear como fecha
+    try {
+        const date = new Date(dateString);
+        if (!isNaN(date.getTime())) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+    } catch (e) {
+        // Si hay error, devolver el string original
+    }
+    
+    return dateString || '-';
+}
+
+// Función para convertir hora decimal de Excel a formato de hora
+function convertExcelTimeToHourFormat(excelTime) {
+    if (!excelTime && excelTime !== 0) return '';
+    
+    // Si es un número (decimal de Excel), convertirlo
+    if (typeof excelTime === 'number') {
+        // Excel almacena la hora como fracción de día (0.0 = medianoche, 0.5 = mediodía)
+        const totalSeconds = Math.round(excelTime * 24 * 60 * 60);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+        const hours12 = hours % 12 || 12;
+        return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
+    }
+    
+    // Si ya es un string, convertirlo a formato de 12 horas si es necesario
+    if (typeof excelTime === 'string') {
+        return convertTo12HourFormat(excelTime);
+    }
+    
+    return '';
+}
+
+// Función para convertir cualquier formato de hora a formato de 12 horas (HH:mm:ss a. m./p. m.)
+function convertTo12HourFormat(timeString) {
+    if (!timeString || (typeof timeString === 'string' && timeString.trim() === '')) {
+        return '';
+    }
+    
+    const trimmedTime = String(timeString).trim();
+    
+    // Si ya está en formato de 12 horas (contiene a. m. o p. m. o AM/PM), devolverlo tal cual
+    if (trimmedTime.includes('a. m.') || trimmedTime.includes('p. m.') || 
+        trimmedTime.includes('AM') || trimmedTime.includes('PM') || 
+        trimmedTime.includes('am') || trimmedTime.includes('pm')) {
+        return trimmedTime;
+    }
+    
+    // Si está en formato de hora 24 horas (contiene :), convertir a formato de 12 horas
+    if (trimmedTime.includes(':')) {
+        // Patrón para HH:mm o HH:mm:ss
+        const timeMatch = trimmedTime.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+        if (timeMatch) {
+            let hours = parseInt(timeMatch[1], 10);
+            const minutes = parseInt(timeMatch[2], 10);
+            const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+            
+            // Validar que sea una hora válida
+            if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 && seconds >= 0 && seconds <= 59) {
+                const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+                const hours12 = hours % 12 || 12;
+                return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
+            }
+        }
+        // Si no coincide con el patrón, devolver tal cual
+        return trimmedTime;
+    }
+    
+    // Intentar parsear como fecha/hora
+    try {
+        const date = new Date(timeString);
+        if (!isNaN(date.getTime())) {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const seconds = date.getSeconds();
+            
+            if (hours >= 0 || minutes > 0 || seconds > 0) {
+                const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+                const hours12 = hours % 12 || 12;
+                return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
+            }
+        }
+    } catch (e) {
+        // Si no se puede parsear, devolver el string original
+        return trimmedTime;
+    }
+    
+    return trimmedTime;
+}
+
+function formatServiceTime(timeString) {
+    if (!timeString && timeString !== 0) return '-';
+    
+    // Si es un número (decimal de Excel), convertirlo
+    if (typeof timeString === 'number') {
+        return convertExcelTimeToHourFormat(timeString);
+    }
+    
+    // Si es un string vacío, devolver '-'
+    if (typeof timeString === 'string' && timeString.trim() === '') {
+        return '-';
+    }
+    
+    // Si es un string, intentar parsearlo
+    if (typeof timeString === 'string') {
+        const trimmedTime = timeString.trim();
+        
+        // Si ya está en formato de hora con a. m./p. m., devolverlo tal cual
+        if (trimmedTime.includes('a. m.') || trimmedTime.includes('p. m.') || trimmedTime.includes('AM') || trimmedTime.includes('PM') || trimmedTime.includes('am') || trimmedTime.includes('pm')) {
+            return trimmedTime;
+        }
+        
+        // Si está en formato de hora (contiene :), convertir a formato de 12 horas
+        if (trimmedTime.includes(':')) {
+            const timeMatch = trimmedTime.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+            if (timeMatch) {
+                let hours = parseInt(timeMatch[1], 10);
+                const minutes = parseInt(timeMatch[2], 10);
+                const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+                
+                // Validar que sea una hora válida
+                if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 && seconds >= 0 && seconds <= 59) {
+                    const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+                    const hours12 = hours % 12 || 12;
+                    return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
+                }
+            }
+            // Si no coincide con el patrón, devolver tal cual
+            return trimmedTime;
+        }
+        
+        // Intentar parsear como fecha/hora
+        try {
+            const date = new Date(timeString);
+            if (!isNaN(date.getTime())) {
+                const hours = date.getHours();
+                const minutes = date.getMinutes();
+                const seconds = date.getSeconds();
+                
+                if (hours >= 0 || minutes > 0 || seconds > 0) {
+                    const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+                    const hours12 = hours % 12 || 12;
+                    return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} ${ampm}`;
+                }
+            }
+        } catch (e) {
+            // Si no se puede parsear, devolver el string original
+            return trimmedTime;
+        }
+    }
+    
+    return '-';
 }
 
 // --- Assign Tasks/Services (Admin) ---
@@ -2194,62 +4137,62 @@ function assignServiceToTechnician() {
             return;
         }
 
-        const service = services[serviceIndex];
-        const previousTechnicianId = service.technicianId;
+        const oldTechnicianId = services[serviceIndex].technicianId; // Capturar técnico actual
+        const previousTechnicianId = services[serviceIndex].previousTechnicianId; // Capturar técnico anterior (si fue desasignado)
         
-        // Guardar información de asignación anterior para detectar reasignaciones
-        if (!service.assignmentHistory) {
-            service.assignmentHistory = [];
+        // Determinar el tipo de asignación
+        const isReassignmentToDifferent = oldTechnicianId && oldTechnicianId !== technicianId; // Reasignación a otro técnico
+        const isReassignmentToSame = previousTechnicianId === technicianId && oldTechnicianId !== technicianId; // Reasignación al mismo técnico después de desasignarlo
+        
+        services[serviceIndex].technicianId = technicianId;
+        services[serviceIndex].status = 'Pendiente';
+        // Limpiar previousTechnicianId ya que ahora tiene un técnico asignado
+        if (services[serviceIndex].previousTechnicianId) {
+            delete services[serviceIndex].previousTechnicianId;
         }
-        
-        // Verificar si es una reasignación al mismo técnico
-        const isReassignment = service.assignmentHistory.some(entry => 
-            entry.technicianId === technicianId && entry.action === 'assigned'
-        ) && service.assignmentHistory.some(entry => 
-            entry.technicianId === technicianId && entry.action === 'unassigned'
-        );
-        
-        // Si ya tenía un técnico asignado y es diferente, agregar desasignación a la historia
-        if (previousTechnicianId && previousTechnicianId !== technicianId) {
-            service.assignmentHistory.push({
-                technicianId: previousTechnicianId,
-                assignedAt: new Date().toISOString(),
-                action: 'unassigned'
-            });
-        }
-        
-        // Actualizar el servicio
-        service.technicianId = technicianId;
-        service.status = 'Pendiente';
-        
-        // Agregar la nueva asignación a la historia
-        service.assignmentHistory.push({
-            technicianId: technicianId,
-            assignedAt: new Date().toISOString(),
-            action: 'assigned'
-        });
-        
         saveServices();
         assignMessage.textContent = 'Servicio asignado exitosamente.';
         assignMessage.className = 'text-success mt-3';
         
-        // Determinar el tipo de notificación
-        let notificationMessage;
-        if (isReassignment) {
-            notificationMessage = `🔄 ¡Servicio REASIGNADO! ID: ${serviceId}. Cliente: ${service.clientName}. Ubicación: ${service.location}. El servicio ha sido reasignado a ti después de haber sido desasignado anteriormente.`;
-            console.log(`🔄 Enviando notificación de reasignación al técnico ${technicianId} para el servicio ${serviceId}`);
-        } else {
-            notificationMessage = `¡Nuevo servicio asignado! ID: ${serviceId}. Cliente: ${service.clientName}. Ubicación: ${service.location}.`;
-            console.log(`📨 Enviando notificación de nueva asignación al técnico ${technicianId} para el servicio ${serviceId}`);
+        // Notificar al técnico anterior si es una reasignación a otro técnico
+        if (isReassignmentToDifferent && oldTechnicianId) {
+            sendNotification(oldTechnicianId, `El servicio ID: ${serviceId} (Cliente: ${services[serviceIndex].clientName}, Tipo: ${services[serviceIndex].safeType}) ha sido REASIGNADO a otro técnico. Ya no está asignado a ti.`);
         }
         
-        sendNotification(technicianId, notificationMessage);
-        
+        // Notificar al técnico según el tipo de asignación
+        if (isReassignmentToSame) {
+            // Reasignación al mismo técnico después de haber sido desasignado
+            sendNotification(technicianId, `El servicio ID: ${serviceId} (Cliente: ${services[serviceIndex].clientName}, Tipo: ${services[serviceIndex].safeType}) ha sido REASIGNADO a ti nuevamente. Ubicación: ${services[serviceIndex].location}.`);
+        } else {
+            // Nueva asignación
+            sendNotification(technicianId, `¡Nuevo servicio asignado! ID: ${serviceId}. Cliente: ${services[serviceIndex].clientName}. Ubicación: ${services[serviceIndex].location}.`);
+        }
         renderAdminServicesList(services, 1);
         renderAssignedServicesList(1);
+        
+        // Poblar los dropdowns primero (esto actualiza la lista de servicios disponibles)
         populateAssignServiceDropdown();
-        document.getElementById('assign-service-id').value = '';
-        document.getElementById('assign-technician').value = '';
+        populateAssignTechnicianDropdown();
+        
+        // Limpiar los valores seleccionados después de poblar los dropdowns
+        // Obtener las referencias nuevamente después de poblar para asegurar que estén actualizadas
+        const assignServiceSelect = document.getElementById('assign-service-id');
+        const assignTechnicianSelect = document.getElementById('assign-technician');
+        
+        // Limpiar los campos select de manera explícita
+        if (assignServiceSelect) {
+            assignServiceSelect.value = '';
+            assignServiceSelect.selectedIndex = 0;
+            // Forzar el evento change para asegurar que se actualice visualmente
+            assignServiceSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (assignTechnicianSelect) {
+            assignTechnicianSelect.value = '';
+            assignTechnicianSelect.selectedIndex = 0;
+            // Forzar el evento change para asegurar que se actualice visualmente
+            assignTechnicianSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        
         renderEmployeeAssignedServices();
         
         // Actualizar contadores de filtros si el técnico asignado está logueado
@@ -2274,12 +4217,6 @@ function renderAssignedServicesList(page = 1) {
     const assignedListElement = document.getElementById('assigned-services-list');
     const assignedCardsElement = document.getElementById('assigned-services-list-cards');
     const assignedTable = assignedListElement.closest('table');
-    const assignedTableHeader = assignedTable.querySelector('thead');
-    
-    // Agregar encabezado de numeración si no existe
-    if (!assignedTableHeader.querySelector('th:first-child').innerHTML.includes('bi-hash')) {
-        addNumberHeader(assignedTableHeader);
-    }
     
     assignedListElement.innerHTML = '';
     assignedCardsElement.innerHTML = '';
@@ -2289,10 +4226,10 @@ function renderAssignedServicesList(page = 1) {
     const paginatedServices = paginateArray(assignedServices, page);
     
     if (paginatedServices.length === 0) {
-        // Mensaje para tabla
+        // Mensaje para tabla (11 columnas: #, ID, FECHA, HORA, CLIENTE, NIT/CC, UBICACIÓN, CÓDIGO SERVICIO, TÉCNICO, ESTADO, ACCIONES)
         const noResultsRow = document.createElement('tr');
         noResultsRow.innerHTML = `
-            <td colspan="10" class="text-center text-muted py-4">
+            <td colspan="11" class="text-center text-muted py-4" style="text-align: center !important; vertical-align: middle;">
                 <i class="bi bi-list-check" style="font-size: 2rem;"></i>
                 <br><br>
                 <strong>No hay servicios asignados</strong>
@@ -2310,28 +4247,65 @@ function renderAssignedServicesList(page = 1) {
         `;
         assignedCardsElement.appendChild(noResultsCard);
     } else {
-        paginatedServices.forEach(service => {
+        paginatedServices.forEach((service, index) => {
             const canUnassign = !['Finalizado', 'Cancelado'].includes(service.status);
-            const unassignButton = canUnassign ?
-                `<button class="btn btn-secondary btn-sm" onclick="unassignService('${service.id}')">Desasignar</button>` :
-                `<button class="btn btn-secondary btn-sm" disabled title="No se puede desasignar servicio finalizado/cancelado">Desasignar</button>`;
+            
+            // Formatear fecha usando la misma función que en la tabla de servicios
+            const formattedDate = formatServiceDate(service.date);
+            
+            // Formatear hora
+            const serviceTime = formatServiceTime(service.time);
+            
+            // Obtener NIT/CC del cliente
+            const clientNit = getClientNitByName(service.clientName);
+            
+            // Botón de estado con color según el estado del servicio
+            let statusButtonClass = 'btn-status-service';
+            let statusButtonColor = '';
+            switch(service.status) {
+                case 'Finalizado':
+                    statusButtonColor = 'btn-status-finalizado';
+                    break;
+                case 'En proceso':
+                    statusButtonColor = 'btn-status-en-proceso';
+                    break;
+                case 'Pendiente':
+                    statusButtonColor = 'btn-status-pendiente';
+                    break;
+                case 'Cancelado':
+                    statusButtonColor = 'btn-status-cancelado';
+                    break;
+                default:
+                    statusButtonColor = 'btn-status-default';
+            }
+            const statusButton = `<button class="btn ${statusButtonClass} ${statusButtonColor}" disabled>${service.status || '-'}</button>`;
+            
+            // Botones de acciones apilados verticalmente (cuadrados con iconos)
+            const actionsButtons = `
+                <div class="d-flex flex-column gap-1">
+                    <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')" title="Ver detalles" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-eye-fill"></i>
+                    </button>
+                    ${canUnassign ? `<button class="btn btn-secondary btn-sm" onclick="unassignService('${service.id}')" title="Desasignar" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-person-x-fill"></i>
+                    </button>` : ''}
+                </div>
+            `;
 
             // Generar fila de tabla (vista desktop)
             const row = document.createElement('tr');
             row.innerHTML = `
+                <td>${(page - 1) * ITEMS_PER_PAGE + index + 1}</td>
                 <td>${service.id}</td>
-                <td>${service.date}</td>
+                <td>${formattedDate}</td>
+                <td>${serviceTime}</td>
                 <td>${service.clientName}</td>
-                <td>${service.serviceCode || '-'}</td>
-                <td>${service.safeType}</td>
-                <td>${service.description || '-'}</td>
+                <td>${clientNit}</td>
                 <td>${service.location}</td>
+                <td>${service.serviceCode || '-'}</td>
                 <td>${getTechnicianNameById(service.technicianId)}</td>
-                <td>${service.status}</td>
-                <td>
-                    <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')">Ver</button>
-                    ${unassignButton}
-                </td>
+                <td>${statusButton}</td>
+                <td>${actionsButtons}</td>
             `;
             assignedListElement.appendChild(row);
             
@@ -2355,6 +4329,11 @@ function renderAssignedServicesList(page = 1) {
                     statusClass = 'status-cancelado';
                     break;
             }
+            
+            // Botón de desasignar para tarjeta móvil
+            const unassignButton = canUnassign ? `<button class="btn btn-secondary btn-sm" onclick="unassignService('${service.id}')" title="Desasignar">
+                        <i class="bi bi-person-x-fill"></i>
+                    </button>` : '';
             
             serviceCard.innerHTML = `
                 <div class="service-card-header">
@@ -2388,15 +4367,18 @@ function renderAssignedServicesList(page = 1) {
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')">Ver</button>
-                    ${unassignButton}
+                    <button class="btn btn-info btn-sm me-1" onclick="viewServiceDetails('${service.id}')" title="Ver detalles" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-eye-fill"></i>
+                    </button>
+                    ${canUnassign ? `<button class="btn btn-secondary btn-sm" onclick="unassignService('${service.id}')" title="Desasignar" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-person-x-fill"></i>
+                    </button>` : ''}
                 </div>
             `;
             assignedCardsElement.appendChild(serviceCard);
         });
         
-        // Agregar numeración a las filas
-        addRowNumbers(assignedListElement, (page - 1) * ITEMS_PER_PAGE + 1);
+        // La numeración ya está incluida en las filas, no necesitamos addRowNumbers
     }
     
     // Generar controles de paginación
@@ -2425,19 +4407,10 @@ function unassignService(serviceId) {
                     return;
                 }
                 const oldTechnicianId = service.technicianId; // Capture old technician ID
-                
-                // Registrar la desasignación en el historial
-                if (!service.assignmentHistory) {
-                    service.assignmentHistory = [];
-                }
+                // Guardar el técnico anterior en previousTechnicianId para detectar reasignaciones
                 if (oldTechnicianId) {
-                    service.assignmentHistory.push({
-                        technicianId: oldTechnicianId,
-                        assignedAt: new Date().toISOString(),
-                        action: 'unassigned'
-                    });
+                    service.previousTechnicianId = oldTechnicianId;
                 }
-                
                 service.technicianId = null;
                 service.status = 'Pendiente';
                 saveServices();
@@ -2454,7 +4427,6 @@ function unassignService(serviceId) {
                 if (currentUser && currentUser.role === 'employee' && currentUser.id === oldTechnicianId) {
                     updateEmployeeFilterCounts();
                 }
-                //showAlert('Servicio desasignado exitosamente.');
             }
         }
     });
@@ -2471,11 +4443,7 @@ document.getElementById('novelty-form').addEventListener('submit', (e) => {
     
     const serviceId = document.getElementById('novelty-service-id').value;
     const description = document.getElementById('novelty-description').value;
-
-    // Debug: Verificar la generación del ID del reporte
     const generatedReportId = generateReportId();
-    debugLog('ID de reporte generado:', generatedReportId);
-
     const newReport = {
         id: generatedReportId,
         date: new Date().toISOString().split('T')[0],
@@ -2486,8 +4454,6 @@ document.getElementById('novelty-form').addEventListener('submit', (e) => {
         replies: [],
         readForAdmin: false // Mark as unread for admin when a new report is created
     };
-    
-    debugLog('Nuevo reporte creado:', newReport);
     reports.push(newReport);
     saveReports();
     renderReportsList(1);
@@ -2498,7 +4464,6 @@ document.getElementById('novelty-form').addEventListener('submit', (e) => {
     const modal = bootstrap.Modal.getInstance(document.getElementById('reportNoveltyModal'));
     modal.hide();
     document.getElementById('novelty-form').reset();
-    //showAlert('Novedad reportada con éxito.');
 });
 
 function renderReportsList(page = 1) {
@@ -2526,40 +4491,42 @@ function renderReportsList(page = 1) {
         paginatedReports.forEach((report, index) => {
             const globalIndex = (page - 1) * ITEMS_PER_PAGE + index + 1;
             const reportDiv = document.createElement('div');
-            // Agregar clases visuales para reportes no leídos
+            // Usar el mismo estilo que las notificaciones
             const isUnread = !report.readForAdmin;
-            reportDiv.className = `alert ${isUnread ? 'alert-danger border-danger' : 'alert-warning'}`;
+            reportDiv.className = `alert ${isUnread ? 'alert-info' : 'alert-light'} d-flex justify-content-between align-items-start`;
             
-            // Agregar indicador visual para reportes nuevos
-            const unreadIndicator = isUnread ? '<span class="badge bg-danger ms-2">NUEVO</span>' : '';
-
+            // Formatear fecha
+            const reportDate = new Date(report.date).toLocaleString();
+            
+            // Construir el mensaje principal
+            let messageParts = [];
+            if (report.serviceId) {
+                messageParts.push(`ID Servicio: ${report.serviceId}`);
+            }
+            messageParts.push(`Reportado por: ${report.reporterName}`);
+            messageParts.push(`Descripción: ${report.description}`);
+            
             let repliesHtml = '';
             if (report.replies && report.replies.length > 0) {
-                repliesHtml = '<h6 class="mt-2">Respuestas:</h6><ul class="list-group">';
+                repliesHtml = '<div class="mt-2"><strong>Respuestas:</strong><ul class="list-group mt-2">';
                 report.replies.forEach(reply => {
                     repliesHtml += `<li class="list-group-item list-group-item-light"><strong>Admin (${new Date(reply.timestamp).toLocaleString()}):</strong> ${reply.message}</li>`;
                 });
-                repliesHtml += '</ul>';
+                repliesHtml += '</ul></div>';
             }
 
             reportDiv.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-secondary me-2">${globalIndex}</span>
+                <div class="d-flex align-items-start flex-grow-1">
+                    <span class="badge bg-secondary me-2">${globalIndex}</span>
+                    <div class="flex-grow-1">
                         <div>
-                            <strong>ID Reporte:</strong> ${report.id}
-                            <strong>Fecha:</strong> ${report.date}
-                            <strong>ID Servicio:</strong> ${report.serviceId}
-                            <strong>Reportado por:</strong> ${report.reporterName}
+                            <strong>${reportDate}:</strong> ${messageParts.join(' | ')}
                         </div>
-                        ${unreadIndicator}
+                        ${repliesHtml}
+                        <button class="btn btn-sm btn-primary mt-2" onclick="openReplyReportModal('${report.id}')">Responder</button>
                     </div>
                 </div>
-                <div class="mt-2">
-                    <strong>Descripción:</strong> ${report.description}
-                </div>
-                ${repliesHtml}
-                <button class="btn btn-sm btn-primary mt-2" onclick="openReplyReportModal('${report.id}')">Responder</button>
+                ${isUnread ? `<button class="btn btn-sm btn-outline-primary" onclick="markReportAsRead('${report.id}')">Marcar como leído</button>` : ''}
             `;
             reportsListElement.appendChild(reportDiv);
         });
@@ -2616,7 +4583,6 @@ document.getElementById('reply-report-form').addEventListener('submit', (e) => {
         const modal = bootstrap.Modal.getInstance(document.getElementById('replyReportModal'));
         modal.hide();
         document.getElementById('reply-report-form').reset();
-        //showAlert('Respuesta enviada.');
     } else {
         showAlert('Error: Reporte no encontrado.');
     }
@@ -2632,10 +4598,7 @@ function renderEmployeeAssignedServices(page = 1) {
     const employeeTable = employeeServicesList.closest('table');
     const employeeTableHeader = employeeTable.querySelector('thead');
     
-    // Agregar encabezado de numeración si no existe
-    if (!employeeTableHeader.querySelector('th:first-child').innerHTML.includes('bi-hash')) {
-        addNumberHeader(employeeTableHeader);
-    }
+    // El encabezado # ya está en el HTML
     
     employeeServicesList.innerHTML = '';
     employeeServicesCards.innerHTML = '';
@@ -2650,10 +4613,16 @@ function renderEmployeeAssignedServices(page = 1) {
     const paginatedServices = paginateArray(assignedToMe, page);
 
     if (paginatedServices.length === 0) {
-        // Mensaje para tabla
+        // Contar el número real de columnas en el header después de agregar la columna #
+        const headerRow = employeeTableHeader.querySelector('tr');
+        const columnCount = headerRow ? headerRow.querySelectorAll('th').length : 10;
+        
+        // Mensaje para tabla - incluir celda vacía para columna # y luego el mensaje que ocupe el resto
+        // Esto coincide con la estructura de las filas reales que no incluyen la columna #
         const noResultsRow = document.createElement('tr');
         noResultsRow.innerHTML = `
-            <td colspan="9" class="text-center text-muted py-4">
+            <td></td>
+            <td colspan="${columnCount - 1}" class="text-center text-muted py-4" style="text-align: center !important; vertical-align: middle;">
                 <i class="bi bi-person-check" style="font-size: 2rem;"></i>
                 <br><br>
                 <strong>No tienes servicios asignados</strong>
@@ -2678,32 +4647,69 @@ function renderEmployeeAssignedServices(page = 1) {
             const dropdownTitle = isStatusFixed ? 'No se puede cambiar el estado de un servicio finalizado/cancelado' : '';
             const showStartButton = service.status === 'Pendiente';
 
+            // Formatear fecha y hora
+            const formattedDate = formatServiceDate(service.date);
+            const serviceTime = formatServiceTime(service.time);
+            
+            // Obtener NIT/CC del cliente
+            const clientNit = getClientNitByName(service.clientName);
+            
+            // Botón de estado con color según el estado del servicio
+            let statusButtonClass = 'btn-status-service';
+            let statusButtonColor = '';
+            switch(service.status) {
+                case 'Finalizado':
+                    statusButtonColor = 'btn-status-finalizado';
+                    break;
+                case 'En proceso':
+                    statusButtonColor = 'btn-status-en-proceso';
+                    break;
+                case 'Pendiente':
+                    statusButtonColor = 'btn-status-pendiente';
+                    break;
+                case 'Cancelado':
+                    statusButtonColor = 'btn-status-cancelado';
+                    break;
+                default:
+                    statusButtonColor = 'btn-status-default';
+            }
+            const statusButton = `<button class="btn ${statusButtonClass} ${statusButtonColor}" disabled>${service.status || '-'}</button>`;
+            
             // Generar fila de tabla (vista desktop)
             const row = document.createElement('tr');
             row.innerHTML = `
+                <td>${globalIndex}</td>
                 <td>${service.id}</td>
-                <td>${service.date}</td>
-                <td>${service.clientName}</td>
+                <td>${formattedDate}</td>
+                <td>${serviceTime}</td>
+                <td>${service.clientName || '-'}</td>
+                <td>${clientNit}</td>
+                <td>${service.location || '-'}</td>
                 <td>${service.serviceCode || '-'}</td>
-                <td>${service.safeType}</td>
-                <td>${service.description || '-'}</td>
-                <td>${service.location}</td>
-                <td>${service.status}</td>
+                <td>${statusButton}</td>
                 <td>
-                    <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')" title="Ver detalles">Ver</button>
-                    <div class="dropdown d-inline-block ms-1">
-                        <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="dropdownMenuButton${service.id}" data-bs-toggle="dropdown" aria-expanded="false" ${dropdownDisabled} title="${dropdownTitle}">
-                            Estado
+                    <div class="d-flex gap-0 align-items-center">
+                        <div class="dropdown d-inline-block">
+                            <button class="btn btn-secondary btn-sm dropdown-toggle btn-cambiar-estado" type="button" id="dropdownMenuButton${service.id}" data-bs-toggle="dropdown" aria-expanded="false" ${dropdownDisabled} title="${dropdownTitle}">
+                                CAMBIAR ESTADO
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton${service.id}">
+                                <li><a class="dropdown-item ${isStatusFixed || service.status === 'Pendiente' ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed} && '${service.status}' !== 'Pendiente') handleEmployeeServiceStatusChange('${service.id}', 'Pendiente')">Pendiente</a></li>
+                                <li><a class="dropdown-item ${isStatusFixed || service.status === 'En proceso' ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed} && '${service.status}' !== 'En proceso') handleEmployeeServiceStatusChange('${service.id}', 'En proceso')">En proceso</a></li>
+                                <li><a class="dropdown-item ${isStatusFixed ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed}) handleEmployeeServiceStatusChange('${service.id}', 'Finalizado')">Finalizado</a></li>
+                                <li><a class="dropdown-item ${isStatusFixed ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed}) handleEmployeeServiceStatusChange('${service.id}', 'Cancelado')">Cancelado</a></li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-info btn-sm btn-ver-servicio ms-1" onclick="viewServiceDetails('${service.id}')" title="Ver detalles">
+                            <i class="bi bi-eye-fill"></i>
                         </button>
-                        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton${service.id}">
-                            <li><a class="dropdown-item ${isStatusFixed || service.status === 'Pendiente' ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed} && '${service.status}' !== 'Pendiente') handleEmployeeServiceStatusChange('${service.id}', 'Pendiente')">Pendiente</a></li>
-                            <li><a class="dropdown-item ${isStatusFixed || service.status === 'En proceso' ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed} && '${service.status}' !== 'En proceso') handleEmployeeServiceStatusChange('${service.id}', 'En proceso')">En proceso</a></li>
-                            <li><a class="dropdown-item ${isStatusFixed ? 'disabled' : ''}" href="#" onclick="console.log('Click en Finalizado (desktop) para servicio:', '${service.id}'); if(!${isStatusFixed}) handleEmployeeServiceStatusChange('${service.id}', 'Finalizado')">Finalizado</a></li>
-                            <li><a class="dropdown-item ${isStatusFixed ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed}) handleEmployeeServiceStatusChange('${service.id}', 'Cancelado')">Cancelado</a></li>
-                        </ul>
+                        <button class="btn btn-danger btn-sm btn-alerta-servicio" data-bs-toggle="modal" data-bs-target="#reportNoveltyModal" onclick="prefillNoveltyServiceId('${service.id}')" title="Reportar novedad">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </button>
+                        ${showStartButton ? `<button class="btn btn-success btn-sm btn-iniciar-servicio" onclick="startService('${service.id}')" title="Iniciar servicio">
+                            <i class="bi bi-play-fill"></i>
+                        </button>` : ''}
                     </div>
-                    ${showStartButton ? `<button class="btn btn-success btn-sm ms-1" onclick="startService('${service.id}')" title="Iniciar servicio">Iniciar</button>` : ''}
-                    <button class="btn btn-danger btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#reportNoveltyModal" onclick="prefillNoveltyServiceId('${service.id}')" title="Reportar novedad">Novedad</button>
                 </td>
             `;
             employeeServicesList.appendChild(row);
@@ -2761,7 +4767,9 @@ function renderEmployeeAssignedServices(page = 1) {
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')">Ver</button>
+                    <button class="btn btn-info btn-sm me-1" onclick="viewServiceDetails('${service.id}')">
+                        <i class="bi bi-eye-fill"></i> Ver
+                    </button>
                     <div class="dropdown d-inline-block">
                         <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="dropdownMenuButtonMobile${service.id}" data-bs-toggle="dropdown" aria-expanded="false" ${dropdownDisabled} title="${dropdownTitle}">
                             Estado
@@ -2769,7 +4777,7 @@ function renderEmployeeAssignedServices(page = 1) {
                         <ul class="dropdown-menu" aria-labelledby="dropdownMenuButtonMobile${service.id}">
                             <li><a class="dropdown-item ${isStatusFixed || service.status === 'Pendiente' ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed} && '${service.status}' !== 'Pendiente') handleEmployeeServiceStatusChange('${service.id}', 'Pendiente')">Pendiente</a></li>
                             <li><a class="dropdown-item ${isStatusFixed || service.status === 'En proceso' ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed} && '${service.status}' !== 'En proceso') handleEmployeeServiceStatusChange('${service.id}', 'En proceso')">En proceso</a></li>
-                            <li><a class="dropdown-item ${isStatusFixed ? 'disabled' : ''}" href="#" onclick="console.log('Click en Finalizado (móvil) para servicio:', '${service.id}'); if(!${isStatusFixed}) handleEmployeeServiceStatusChange('${service.id}', 'Finalizado')">Finalizado</a></li>
+                            <li><a class="dropdown-item ${isStatusFixed ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed}) handleEmployeeServiceStatusChange('${service.id}', 'Finalizado')">Finalizado</a></li>
                             <li><a class="dropdown-item ${isStatusFixed ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed}) handleEmployeeServiceStatusChange('${service.id}', 'Cancelado')">Cancelado</a></li>
                         </ul>
                     </div>
@@ -2779,9 +4787,6 @@ function renderEmployeeAssignedServices(page = 1) {
             `;
             employeeServicesCards.appendChild(serviceCard);
         });
-        
-        // Agregar numeración a las filas
-        addRowNumbers(employeeServicesList, (page - 1) * ITEMS_PER_PAGE + 1);
     }
     
     // Generar controles de paginación
@@ -2805,24 +4810,17 @@ function renderEmployeeAssignedServices(page = 1) {
 }
 
 function handleEmployeeServiceStatusChange(id, newStatus) {
-    console.log('handleEmployeeServiceStatusChange llamado con id:', id, 'newStatus:', newStatus);
-    
     const service = services.find(s => s.id === id);
-    console.log('Servicio encontrado en handleEmployeeServiceStatusChange:', service);
-    
     if (!service) {
-        console.error('No se encontró el servicio con ID:', id);
         return;
     }
 
     if (['Finalizado', 'Cancelado'].includes(service.status)) {
-        console.log('Servicio ya finalizado o cancelado, no se puede cambiar estado');
         showAlert('No se puede cambiar el estado de un servicio finalizado o cancelado.');
         return;
     }
 
     if (newStatus === 'Finalizado') {
-        console.log('Intentando abrir modal de finalización para servicio:', id);
         openServiceFinalizationModal(id);
     } else if (newStatus === 'Cancelado') {
         // Show the modal for cancellation reason
@@ -2856,136 +4854,177 @@ function handleEmployeeServiceStatusChange(id, newStatus) {
 }
 
 function openServiceFinalizationModal(serviceId) {
-    console.log('openServiceFinalizationModal llamado con serviceId:', serviceId);
+    // Recargar servicios desde localStorage para asegurar datos actualizados
+    services = JSON.parse(localStorage.getItem('services')) || [];
     
     const service = services.find(s => s.id === serviceId);
-    console.log('Servicio encontrado:', service);
-    
     if (service) {
         try {
             // Verificar que el modal existe
             const modalElement = document.getElementById('registerServiceModal');
-            console.log('Elemento del modal encontrado:', modalElement);
-            
             if (!modalElement) {
-                console.error('ERROR: No se encontró el elemento del modal registerServiceModal');
                 showAlert('Error: No se pudo abrir el modal de finalización. Contacte al administrador.');
                 return;
             }
             
-            // Llenar los campos del formulario
-            document.getElementById('edit-service-id').value = service.id;
+            // Actualizar el título del modal
             document.getElementById('registerServiceModalLabel').textContent = `Finalizar Servicio: ${service.id}`;
-            document.getElementById('service-date').value = service.date;
             
-            // Cargar código de servicio y tipo de servicio
-            // Primero poblar el dropdown de códigos de servicio
-            populateServiceCodes();
-            
-            // Luego establecer el valor del código de servicio
-            document.getElementById('service-code').value = service.serviceCode || '';
-            
-            // Cargar automáticamente el tipo y descripción basado en el código
-            loadServiceDetails();
-            
-            // También establecer el tipo de servicio directamente por si acaso
-            setServiceTypes(service.safeType);
-            
-            document.getElementById('service-description').value = service.description || ''; // Pre-llenar descripción
-            document.getElementById('service-location').value = service.location;
-            document.getElementById('service-client-name').value = service.clientName;
-            document.getElementById('service-client-phone').value = service.clientPhone;
-            document.getElementById('service-status').value = 'Finalizado'; // Establece el estado a Finalizado
-            
-            console.log('📝 Datos cargados en modal de finalización:', {
-                id: service.id,
-                date: service.date,
-                serviceCode: service.serviceCode,
-                safeType: service.safeType,
-                description: service.description,
-                location: service.location,
-                clientName: service.clientName,
-                clientPhone: service.clientPhone,
-                status: 'Finalizado'
-            });
-
-            // Ocultar campo de técnico para el técnico
-            document.getElementById('service-technician-field').classList.add('d-none');
-
-            // --- ESTA ES LA CLAVE ---
-            // Aseguramos que los campos se muestren y se inicialicen
-            document.getElementById('photo-evidence-section').classList.remove('d-none');
-            document.getElementById('client-signature-section').classList.remove('d-none');
-            document.getElementById('technician-signature-section').classList.remove('d-none');
-
-            // Pre-cargar foto si existe
-            if (service.photo) {
-                document.getElementById('service-photo-preview').src = service.photo;
-                document.getElementById('service-photo-preview').classList.remove('d-none');
-            } else {
-                document.getElementById('service-photo-preview').classList.add('d-none');
-                document.getElementById('service-photo').value = ''; // Limpiar input de archivo
-            }
-
-            // Inicializar y cargar firmas
-            console.log('Inicializando signature pads...');
-            initializeSignaturePads(); // Asegura que los objetos signaturePad existan
-            
-            if (service.clientSignature) {
-                const imgClient = new Image();
-                imgClient.onload = function() {
-                    if (signaturePadClient) signaturePadClient.fromDataURL(service.clientSignature);
-                };
-                imgClient.src = service.clientSignature;
-            } else {
-                clearSignaturePad('client');
-            }
-
-            if (service.technicianSignature) {
-                const imgTechnician = new Image();
-                imgTechnician.onload = function() {
-                    if (signaturePadTechnician) signaturePadTechnician.fromDataURL(service.technicianSignature);
-                };
-                imgTechnician.src = service.technicianSignature;
-            } else {
-                clearSignaturePad('technician');
-            }
-
-            // Deshabilitar campos que el técnico no debe editar al finalizar
-            const elementsToDisable = [
-                'service-date',
-                'service-code',
-                'service-type-bovedas',
-                'service-type-puertas', 
-                'service-type-pasatulas',
-                'service-description',
-                'service-location',
-                'service-client-name',
-                'service-client-phone',
-                'service-status'
-            ];
-            
-            elementsToDisable.forEach(elementId => {
-                const element = document.getElementById(elementId);
-                if (element) {
-                    element.disabled = true;
-                    console.log(`✅ Campo ${elementId} deshabilitado`);
-                } else {
-                    console.warn(`⚠️ Elemento ${elementId} no encontrado`);
+            // Función para cargar los datos cuando el modal esté completamente visible
+            const loadDataWhenModalShown = () => {
+                // Usar forceLoadServiceDataInModal para cargar todos los datos correctamente
+                // Esto asegura que fecha y hora se carguen correctamente
+                forceLoadServiceDataInModal(service);
+                
+                // Asegurar que el estado esté en Finalizado
+                document.getElementById('service-status').value = 'Finalizado';
+                
+                // Cargar código de servicio y tipo de servicio (forceLoadServiceDataInModal ya carga los demás campos)
+                populateServiceCodes();
+                loadServiceDetails();
+                
+                // Cargar cantidad del servicio
+                const quantityInput = document.getElementById('service-quantity');
+                if (quantityInput) {
+                    quantityInput.value = service.quantity || 1;
                 }
-            });
+                
+                // Cargar servicios adicionales
+                const additionalServicesContainer = document.getElementById('additional-services-container');
+                if (additionalServicesContainer && service.additionalServices && Array.isArray(service.additionalServices) && service.additionalServices.length > 0) {
+                    additionalServicesContainer.innerHTML = '';
+                    service.additionalServices.forEach((additionalService, index) => {
+                        const serviceIndex = index;
+                        const additionalServiceDiv = document.createElement('div');
+                        additionalServiceDiv.className = 'mb-3 p-3 border rounded bg-light';
+                        additionalServiceDiv.setAttribute('data-service-index', serviceIndex);
+                        const suggestionsId = `additional-service-suggestions-${serviceIndex}`;
+                        additionalServiceDiv.innerHTML = `
+                            <div class="row mb-3">
+                                <div class="col-md-6 mb-3">
+                                    <div class="service-code-selector">
+                                        <label class="form-label fw-bold service-code-label">CÓDIGO DE SERVICIO ADICIONAL</label>
+                                        <input type="text" class="form-control service-code-input additional-service-code" placeholder="Escribir para buscar código..." name="additional-service-code-${serviceIndex}" data-service-index="${serviceIndex}" value="${additionalService.code || ''}">
+                                        <div class="service-code-suggestions" id="${suggestionsId}" style="display: none;"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label fw-bold">TIPO DE SERVICIO</label>
+                                    <input type="text" class="form-control additional-service-type" placeholder="" name="additional-service-type-${serviceIndex}" value="${additionalService.type || ''}">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label fw-bold">CANTIDAD</label>
+                                    <input type="number" class="form-control additional-service-quantity" placeholder="1" name="additional-service-quantity-${serviceIndex}" min="1" value="${additionalService.quantity || 1}">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label fw-bold">DESCRIPCIÓN</label>
+                                    <input type="text" class="form-control additional-service-description" placeholder="" name="additional-service-description-${serviceIndex}" value="${additionalService.description || ''}">
+                                </div>
+                            </div>
+                        `;
+                        additionalServicesContainer.appendChild(additionalServiceDiv);
+                    });
+                } else if (additionalServicesContainer) {
+                    additionalServicesContainer.innerHTML = '';
+                }
+                
+                // Aseguramos que los campos se muestren y se inicialicen
+                document.getElementById('photo-evidence-section').classList.remove('d-none');
+                document.getElementById('client-signature-section').classList.remove('d-none');
+                document.getElementById('technician-signature-section').classList.remove('d-none');
 
-            console.log('Intentando abrir el modal...');
+                // Pre-cargar foto si existe
+                if (service.photo) {
+                    document.getElementById('service-photo-preview').src = service.photo;
+                    document.getElementById('service-photo-preview').classList.remove('d-none');
+                } else {
+                    document.getElementById('service-photo-preview').classList.add('d-none');
+                    document.getElementById('service-photo').value = '';
+                }
+
+                // Inicializar y cargar firmas
+                initializeSignaturePads();
+                
+                if (service.clientSignature) {
+                    const imgClient = new Image();
+                    imgClient.onload = function() {
+                        if (signaturePadClient) signaturePadClient.fromDataURL(service.clientSignature);
+                    };
+                    imgClient.src = service.clientSignature;
+                } else {
+                    clearSignaturePad('client');
+                }
+
+                if (service.technicianSignature) {
+                    const imgTechnician = new Image();
+                    imgTechnician.onload = function() {
+                        if (signaturePadTechnician) signaturePadTechnician.fromDataURL(service.technicianSignature);
+                    };
+                    imgTechnician.src = service.technicianSignature;
+                } else {
+                    clearSignaturePad('technician');
+                }
+
+                // Habilitar todos los campos para que el técnico pueda editarlos antes de finalizar
+                const elementsToEnable = [
+                    'service-date',
+                    'service-code',
+                    'service-type',
+                    'service-type-bovedas',
+                    'service-type-puertas', 
+                    'service-type-pasatulas',
+                    'service-description',
+                    'service-location',
+                    'service-client-name',
+                    'service-client-phone',
+                    'service-client-nit',
+                    'service-client-email',
+                    'service-status',
+                    'service-quantity',
+                    'service-time'
+                ];
+                
+                elementsToEnable.forEach(elementId => {
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        element.disabled = false;
+                        element.removeAttribute('readonly');
+                    }
+                });
+                
+                // Remover readonly de service-type y service-description específicamente
+                const serviceType = document.getElementById('service-type');
+                if (serviceType) {
+                    serviceType.removeAttribute('readonly');
+                }
+                const serviceDescription = document.getElementById('service-description');
+                if (serviceDescription) {
+                    serviceDescription.removeAttribute('readonly');
+                }
+                
+                // Habilitar campos de servicios adicionales
+                const additionalServiceInputs = document.querySelectorAll('.additional-service-code, .additional-service-type, .additional-service-description, .additional-service-quantity');
+                additionalServiceInputs.forEach(input => {
+                    input.disabled = false;
+                    input.removeAttribute('readonly');
+                });
+                
+                // Remover el listener después de usarlo
+                modalElement.removeEventListener('shown.bs.modal', loadDataWhenModalShown);
+            };
+            
+            // Agregar listener para cuando el modal esté completamente visible
+            modalElement.addEventListener('shown.bs.modal', loadDataWhenModalShown);
+            
+            // Abrir el modal
             const modal = new bootstrap.Modal(modalElement);
             modal.show();
-            console.log('Modal abierto exitosamente');
-            
         } catch (error) {
-            console.error('Error al abrir el modal de finalización:', error);
             showAlert('Error al abrir el modal de finalización: ' + error.message);
         }
     } else {
-        console.error('ERROR: No se encontró el servicio con ID:', serviceId);
         showAlert('Error: No se encontró el servicio especificado.');
     }
 }
@@ -3044,7 +5083,6 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
                 },
                 (error) => {
                     // Error: mostrar mensaje específico
-                    console.error('Error de geolocalización para cambio de estado:', error);
                     showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
                 },
                 'cambio_estado'
@@ -3054,40 +5092,60 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
         }
 
         function saveAndNotify() {
-            console.log(`💾 Guardando cambios y enviando notificación para servicio ${id}...`);
-            console.log(`📊 Cambio de estado: ${oldStatus} → ${newStatus}`);
-            console.log(`👤 Técnico: ${currentUser.username}`);
-            
             saveServices();
             renderEmployeeAssignedServices(1);
             renderAdminServicesList(services, 1);
             updateEmployeeFilterCounts(); // Actualizar contadores de filtros
             
-            // Construir mensaje de notificación
-            let notificationMessage = `El servicio ID: ${id} ha cambiado de estado de "${oldStatus}" a "${newStatus}" por el técnico ${currentUser.username}.`;
-            if (newStatus === 'Cancelado' && cancellationReason) {
-                notificationMessage += ` Motivo: ${cancellationReason}`;
+            // Obtener coordenadas y timestamp para la notificación
+            let notificationCoordinates = null;
+            let notificationTimestamp = null;
+            if (oldService.finalizationOrCancellationLocation) {
+                notificationCoordinates = {
+                    latitude: oldService.finalizationOrCancellationLocation.latitude,
+                    longitude: oldService.finalizationOrCancellationLocation.longitude
+                };
+                notificationTimestamp = oldService.finalizationOrCancellationTime || new Date().toISOString();
+            } else if (oldService.startLocation) {
+                notificationCoordinates = {
+                    latitude: oldService.startLocation.latitude,
+                    longitude: oldService.startLocation.longitude
+                };
+                notificationTimestamp = oldService.startTime || new Date().toISOString();
             }
             
-            console.log(`📨 Enviando notificación: ${notificationMessage}`);
-            sendNotification('admin', notificationMessage);
+            // Formatear timestamp
+            if (!window.globalGeolocation) {
+                window.globalGeolocation = new EnhancedGeolocation();
+            }
+            const timestamp = notificationTimestamp ? new Date(notificationTimestamp).toLocaleString() : new Date().toLocaleString();
+            const coordinates = notificationCoordinates ? `${notificationCoordinates.latitude.toFixed(8)}, ${notificationCoordinates.longitude.toFixed(8)}` : '';
             
-            // Verificar que la notificación se envió correctamente
-            setTimeout(() => {
-                const adminNotifications = notifications.filter(n => {
-                    const targetUser = users.find(u => u.id === n.userId);
-                    return targetUser && targetUser.role === 'admin' && !n.read;
-                });
-                console.log(`✅ Verificación: ${adminNotifications.length} notificaciones no leídas para admin`);
-            }, 100);
+            // Crear mensaje según el estado
+            let message = '';
+            if (newStatus === 'Finalizado') {
+                message = `El técnico ${currentUser.username} ha finalizado el servicio ID: ${id} a las ${timestamp} en la ubicación: ${coordinates}.`;
+            } else if (newStatus === 'Cancelado') {
+                message = `El técnico ${currentUser.username} ha cancelado el servicio ID: ${id} a las ${timestamp} en la ubicación: ${coordinates}. ${cancellationReason ? `Motivo: ${cancellationReason}` : ''}`;
+            } else {
+                message = `El servicio ID: ${id} ha sido cambiado de estado de "${oldStatus}" a "${newStatus}" por el técnico ${currentUser.username}.`;
+            }
             
-            // Cerrar el modal de finalización de servicio de manera robusta
-            closeModalSafely('registerServiceModal');
+            sendNotification('admin', message, notificationCoordinates);
+            
+            // Notificar al técnico cuando el admin cancela un servicio
+            if (currentUser.role === 'admin' && newStatus === 'Cancelado' && oldService.technicianId) {
+                const technicianMessage = `El servicio ID: ${id} (Cliente: ${oldService.clientName}, Tipo: ${oldService.safeType || '-'}) ha sido CANCELADO por el administrador. ${cancellationReason ? `Motivo: ${cancellationReason}` : ''}`;
+                sendNotification(oldService.technicianId, technicianMessage);
+            }
             
             // Mostrar mensaje de éxito con ubicación para cancelación
             if (newStatus === 'Cancelado') {
-                // Cerrar el modal de cancelación si está abierto de manera robusta
-                closeModalSafely('cancelReasonModal');
+                // Cerrar el modal de cancelación si está abierto
+                const cancelReasonModal = bootstrap.Modal.getInstance(document.getElementById('cancelReasonModal'));
+                if (cancelReasonModal) {
+                    cancelReasonModal.hide();
+                }
                 
                 // Mostrar alerta con ubicación detallada después de un pequeño delay
                 setTimeout(() => {
@@ -3100,20 +5158,6 @@ function changeServiceStatus(id, newStatus, cancellationReason = null) {
                         showAlert(`✅ Servicio cancelado exitosamente.\n\n📍 Ubicación registrada:\nCoordenadas: ${displayInfo.coordinates}\nPrecisión: ${displayInfo.accuracy}\nDirección: ${displayInfo.direction}\nVelocidad: ${displayInfo.speed}\nAltitud: ${displayInfo.altitude}\nNavegador: ${displayInfo.browser}\n\nMotivo de cancelación: ${cancellationReason}\n\nEl servicio ha sido marcado como "Cancelado" y se ha registrado la ubicación de cancelación.`);
                     } else {
                         showAlert(`✅ Servicio cancelado exitosamente.\n\nMotivo de cancelación: ${cancellationReason}\n\nEl servicio ha sido marcado como "Cancelado".`);
-                    }
-                }, 300);
-            } else if (newStatus === 'Finalizado') {
-                // Mostrar mensaje de éxito para servicios finalizados
-                setTimeout(() => {
-                    if (oldService.finalizationOrCancellationLocation) {
-                        if (!window.globalGeolocation) {
-                            window.globalGeolocation = new EnhancedGeolocation();
-                        }
-                        const displayInfo = window.globalGeolocation.formatLocationForDisplay(oldService.finalizationOrCancellationLocation);
-                        
-                        showAlert(`✅ Servicio finalizado exitosamente.\n\n📍 Ubicación registrada:\nCoordenadas: ${displayInfo.coordinates}\nPrecisión: ${displayInfo.accuracy}\nDirección: ${displayInfo.direction}\nVelocidad: ${displayInfo.speed}\nAltitud: ${displayInfo.altitude}\nNavegador: ${displayInfo.browser}\n\nEl servicio ha sido marcado como "Finalizado" y se ha registrado la ubicación de finalización.`);
-                    } else {
-                        showAlert(`✅ Servicio finalizado exitosamente.\n\nEl servicio ha sido marcado como "Finalizado".`);
                     }
                 }, 300);
             }
@@ -3137,7 +5181,6 @@ function startService(serviceId) {
         },
         (error) => {
             // Error: mostrar mensaje específico
-            console.error('Error de geolocalización:', error);
             showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
         },
         'inicio_servicio'
@@ -3183,8 +5226,11 @@ function saveServiceLocation(serviceId, locationData) {
         }
         const displayInfo = window.globalGeolocation.formatLocationForDisplay(locationData);
         
-        const message = `El técnico ${currentUser.username} ha iniciado el servicio ID: ${serviceId} a las ${displayInfo.timestamp} en la ubicación: ${displayInfo.coordinates} (Precisión: ${displayInfo.accuracy}).`;
-        sendNotification('admin', message);
+        const message = `El técnico ${currentUser.username} ha iniciado el servicio ID: ${serviceId} a las ${displayInfo.timestamp} en la ubicación: ${displayInfo.coordinates}.`;
+        sendNotification('admin', message, {
+            latitude: locationData.latitude,
+            longitude: locationData.longitude
+        });
         
         showAlert(`✅ Servicio iniciado exitosamente.\n\n📍 Ubicación registrada:\nCoordenadas: ${displayInfo.coordinates}\nPrecisión: ${displayInfo.accuracy}\nDirección: ${displayInfo.direction}\nVelocidad: ${displayInfo.speed}\nAltitud: ${displayInfo.altitude}\nNavegador: ${displayInfo.browser}\n\nEl estado del servicio ha cambiado a "En proceso".`);
     }
@@ -3196,26 +5242,21 @@ function prefillNoveltyServiceId(serviceId) {
 
 // --- Notifications ---
 
-function sendNotification(targetRoleOrUserId, message) {
-    console.log(`🔔 Enviando notificación a: ${targetRoleOrUserId}`, { message });
-    
+function sendNotification(targetRoleOrUserId, message, coordinates = null) {
     let targetUsers = [];
     if (targetRoleOrUserId === 'admin') {
         targetUsers = users.filter(u => u.role === 'admin');
-        console.log(`👥 Usuarios admin encontrados:`, targetUsers.map(u => ({ id: u.id, username: u.username })));
-    } else if (typeof targetRoleOrUserId === 'string' && targetRoleOrUserId.startsWith('_')) {
+    } else if (typeof targetRoleOrUserId === 'string') {
+        // Aceptar cualquier ID de usuario (user001, user002, _xxx, etc.)
         const targetUser = users.find(u => u.id === targetRoleOrUserId);
         if (targetUser) {
             targetUsers.push(targetUser);
-            console.log(`👤 Usuario específico encontrado:`, { id: targetUser.id, username: targetUser.username });
         }
     } else {
-        console.warn("❌ Invalid notification target:", targetRoleOrUserId);
         return;
     }
 
     if (targetUsers.length > 0) {
-        let notificationsCreated = 0;
         targetUsers.forEach(user => {
             // Evitar duplicar notificaciones para el mismo usuario con el mismo mensaje
             const existingNotification = notifications.find(n => 
@@ -3226,35 +5267,31 @@ function sendNotification(targetRoleOrUserId, message) {
             );
             
             if (!existingNotification) {
-                const newNotification = {
+                const notification = {
                     id: generateId(),
                     userId: user.id,
                     message: message,
                     timestamp: new Date().toISOString(),
                     read: false
                 };
-                notifications.push(newNotification);
-                notificationsCreated++;
-                console.log(`✅ Notificación creada para usuario ${user.username}:`, newNotification);
-            } else {
-                console.log(`⚠️ Notificación duplicada evitada para usuario ${user.username}`);
+                
+                // Agregar coordenadas si están disponibles
+                if (coordinates && coordinates.latitude && coordinates.longitude) {
+                    notification.coordinates = {
+                        latitude: coordinates.latitude,
+                        longitude: coordinates.longitude
+                    };
+                }
+                
+                notifications.push(notification);
             }
         });
-        
-        if (notificationsCreated > 0) {
-            saveNotifications();
-            updateNotificationBadges();
-            console.log(`📨 ${notificationsCreated} notificaciones enviadas exitosamente`);
-        } else {
-            console.log(`ℹ️ No se crearon nuevas notificaciones (posiblemente duplicadas)`);
-        }
-    } else {
-        console.warn("❌ No se encontraron usuarios para enviar notificación");
+        saveNotifications();
+        updateNotificationBadges();
     }
 }
 
 function renderAdminNotifications(page = 1) {
-    console.log('📋 Renderizando notificaciones de administrador...');
     currentAdminNotificationsPage = page;
     const notificationsList = document.getElementById('admin-notifications-list');
     const notificationsContainer = notificationsList.closest('.card-body');
@@ -3265,27 +5302,38 @@ function renderAdminNotifications(page = 1) {
         return targetUser && targetUser.role === 'admin';
     }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    console.log(`📊 Total notificaciones admin encontradas: ${adminNotifications.length}`);
-
     const totalPages = getTotalPages(adminNotifications.length);
     const paginatedNotifications = paginateArray(adminNotifications, page);
 
     if (paginatedNotifications.length === 0) {
         notificationsList.innerHTML = '<p>No hay notificaciones para administradores.</p>';
-        console.log('ℹ️ No hay notificaciones para mostrar');
     } else {
-        console.log(`📄 Mostrando ${paginatedNotifications.length} notificaciones en página ${page}`);
         paginatedNotifications.forEach((n, index) => {
             const notificationDiv = document.createElement('div');
             notificationDiv.className = `alert ${n.read ? 'alert-light' : 'alert-info'} d-flex justify-content-between align-items-center`;
+            
+            // Verificar si hay coordenadas para mostrar el botón de Google Maps
+            let googleMapsButton = '';
+            if (n.coordinates && n.coordinates.latitude && n.coordinates.longitude) {
+                const mapsUrl = `https://www.google.com/maps?q=${n.coordinates.latitude},${n.coordinates.longitude}`;
+                googleMapsButton = `<a href="${mapsUrl}" target="_blank" class="btn btn-sm btn-success ms-2" title="Abrir en Google Maps">
+                    <i class="bi bi-geo-alt-fill"></i> Ver en Maps
+                </a>`;
+            }
+            
             notificationDiv.innerHTML = `
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center flex-grow-1">
                     <span class="badge bg-secondary me-2">${(page - 1) * ITEMS_PER_PAGE + index + 1}</span>
-                    <div>
+                    <div class="flex-grow-1">
                         <strong>${new Date(n.timestamp).toLocaleString()}:</strong> ${n.message}
+                        ${n.coordinates && n.coordinates.latitude && n.coordinates.longitude ? 
+                            `<div class="mt-1"><small class="text-muted">Coordenadas: ${n.coordinates.latitude.toFixed(6)}, ${n.coordinates.longitude.toFixed(6)}</small></div>` : ''}
                     </div>
                 </div>
-                ${!n.read ? `<button class="btn btn-sm btn-outline-primary" onclick="markNotificationAsRead('${n.id}')">Marcar como leído</button>` : ''}
+                <div class="d-flex align-items-center">
+                    ${googleMapsButton}
+                    ${!n.read ? `<button class="btn btn-sm btn-outline-primary ms-2" onclick="markNotificationAsRead('${n.id}')">Marcar como leído</button>` : ''}
+                </div>
             `;
             notificationsList.appendChild(notificationDiv);
         });
@@ -3305,7 +5353,6 @@ function renderAdminNotifications(page = 1) {
     generatePaginationControls(page, totalPages, 'admin-notifications-pagination', renderAdminNotifications);
     
     updateNotificationBadges();
-    console.log('✅ Notificaciones de administrador renderizadas');
 }
 
 function renderEmployeeNotifications(page = 1) {
@@ -3368,14 +5415,14 @@ function renderEmployeeReportReplies(page = 1) {
     reportRepliesList.innerHTML = '';
     if (!currentUser) return;
 
-    const employeeReportsWithReplies = reports.filter(r => r.reporterId === currentUser.id && r.replies.length > 0);
+    const employeeReportsWithReplies = reports.filter(r => r.reporterId === currentUser.id && r.replies && r.replies.length > 0);
 
-    // Obtener todas las respuestas no leídas
+    // Obtener todas las respuestas (leídas y no leídas), ordenadas por fecha (más recientes primero)
     let allReplies = [];
     let replyCounter = 0;
 
     employeeReportsWithReplies.forEach(report => {
-        report.replies.filter(reply => !reply.readForTechnician).forEach(reply => {
+        report.replies.forEach(reply => {
             allReplies.push({
                 report: report,
                 reply: reply,
@@ -3383,27 +5430,38 @@ function renderEmployeeReportReplies(page = 1) {
             });
         });
     });
+    
+    // Ordenar por fecha (más recientes primero) y luego por estado de lectura (no leídas primero)
+    allReplies.sort((a, b) => {
+        // Primero ordenar por estado de lectura (no leídas primero)
+        if (!a.reply.readForTechnician && b.reply.readForTechnician) return -1;
+        if (a.reply.readForTechnician && !b.reply.readForTechnician) return 1;
+        // Si tienen el mismo estado, ordenar por fecha (más recientes primero)
+        return new Date(b.reply.timestamp) - new Date(a.reply.timestamp);
+    });
 
     const totalPages = getTotalPages(allReplies.length);
     const paginatedReplies = paginateArray(allReplies, page);
 
     if (paginatedReplies.length === 0) {
-        reportRepliesList.innerHTML = '<p class="no-replies-message">No hay respuestas nuevas a tus reportes.</p>';
+        reportRepliesList.innerHTML = '<p>No hay respuestas a tus reportes.</p>';
     } else {
         paginatedReplies.forEach((item, index) => {
             const globalIndex = (page - 1) * ITEMS_PER_PAGE + index + 1;
             const { report, reply } = item;
             
+            // Usar el mismo estilo que las notificaciones
+            const isUnread = !reply.readForTechnician;
             const replyDiv = document.createElement('div');
-            replyDiv.className = `alert alert-success d-flex justify-content-between align-items-center`;
+            replyDiv.className = `alert ${isUnread ? 'alert-info' : 'alert-light'} d-flex justify-content-between align-items-center`;
             replyDiv.innerHTML = `
                 <div class="d-flex align-items-center">
-                    <span class="badge bg-success me-2">${globalIndex}</span>
+                    <span class="badge bg-secondary me-2">${globalIndex}</span>
                     <div>
-                        <strong>Respuesta a Reporte ID ${report.id} (${new Date(reply.timestamp).toLocaleString()}):</strong> ${reply.message}
+                        <strong>${new Date(reply.timestamp).toLocaleString()}:</strong> Respuesta a Reporte ID ${report.id}: ${reply.message}
                     </div>
                 </div>
-                <button class="btn btn-sm btn-outline-success" onclick="markReportReplyAsRead('${report.id}', '${reply.timestamp}')">Marcar como leído</button>
+                ${isUnread ? `<button class="btn btn-sm btn-outline-primary" onclick="markReportReplyAsRead('${report.id}', '${reply.timestamp}')">Marcar como leído</button>` : ''}
             `;
             reportRepliesList.appendChild(replyDiv);
         });
@@ -3439,6 +5497,16 @@ function markNotificationAsRead(id) {
     }
 }
 
+function markReportAsRead(reportId) {
+    const report = reports.find(r => r.id === reportId);
+    if (report) {
+        report.readForAdmin = true;
+        saveReports();
+        renderReportsList(currentReportsPage);
+        updateNotificationBadges();
+    }
+}
+
 function markReportReplyAsRead(reportId, replyTimestamp) {
     const reportIndex = reports.findIndex(r => r.id === reportId);
     if (reportIndex !== -1) {
@@ -3456,26 +5524,23 @@ function markReportReplyAsRead(reportId, replyTimestamp) {
 
 // --- Notification Badges in Nav ---
 function updateNotificationBadges() {
-    console.log('🔄 Actualizando badges de notificaciones...');
-    
     const adminReportsTab = document.getElementById('admin-reports-tab');
     const adminNotificationsTab = document.getElementById('admin-notifications-tab');
     const employeeNotificationsTab = document.getElementById('employee-notifications-tab');
 
     if (currentUser && currentUser.role === 'admin') {
         const unreadReportsCount = reports.filter(r => !r.readForAdmin).length;
+
         const unreadAdminNotificationsCount = notifications.filter(n => n.userId === currentUser.id && !n.read).length;
 
-        console.log(`📊 Admin - Reportes no leídos: ${unreadReportsCount}, Notificaciones no leídas: ${unreadAdminNotificationsCount}`);
-
         if (unreadReportsCount > 0) {
-            adminReportsTab.innerHTML = `Reportes/Novedades <span class="badge bg-danger ms-1">${unreadReportsCount}</span>`;
+            adminReportsTab.innerHTML = `Reportes/Novedades <span class="badge bg-danger ms-1" style="display: inline-block; vertical-align: middle;">${unreadReportsCount}</span>`;
         } else {
             adminReportsTab.innerHTML = `Reportes/Novedades`;
         }
 
         if (unreadAdminNotificationsCount > 0) {
-            adminNotificationsTab.innerHTML = `Notificaciones <span class="badge bg-danger ms-1">${unreadAdminNotificationsCount}</span>`;
+            adminNotificationsTab.innerHTML = `Notificaciones <span class="badge bg-danger ms-1" style="display: inline-block; vertical-align: middle;">${unreadAdminNotificationsCount}</span>`;
         } else {
             adminNotificationsTab.innerHTML = `Notificaciones`;
         }
@@ -3488,11 +5553,9 @@ function updateNotificationBadges() {
         ).length;
         const unreadReportRepliesCount = reports.filter(r => r.reporterId === currentUser.id && r.replies.some(reply => !reply.readForTechnician)).length;
 
-        console.log(`📊 Employee - Notificaciones no leídas: ${unreadEmployeeNotificationsCount}, Respuestas no leídas: ${unreadReportRepliesCount}`);
-
         // Actualizar badge de notificaciones
         if (unreadEmployeeNotificationsCount > 0) {
-            employeeNotificationsTab.innerHTML = `Notificaciones <span class="badge bg-danger ms-1">${unreadEmployeeNotificationsCount}</span>`;
+            employeeNotificationsTab.innerHTML = `Notificaciones <span class="badge bg-danger ms-1" style="display: inline-block; vertical-align: middle;">${unreadEmployeeNotificationsCount}</span>`;
         } else {
             employeeNotificationsTab.innerHTML = `Notificaciones`;
         }
@@ -3501,249 +5564,11 @@ function updateNotificationBadges() {
         const employeeReportRepliesTab = document.getElementById('employee-report-replies-tab');
         if (employeeReportRepliesTab) {
             if (unreadReportRepliesCount > 0) {
-                employeeReportRepliesTab.innerHTML = `Respuestas de Reportes <span class="badge bg-success ms-1">${unreadReportRepliesCount}</span>`;
+                employeeReportRepliesTab.innerHTML = `Respuestas de Reportes <span class="badge bg-success ms-1" style="display: inline-block; vertical-align: middle;">${unreadReportRepliesCount}</span>`;
             } else {
                 employeeReportRepliesTab.innerHTML = `Respuestas de Reportes`;
             }
         }
-    }
-    
-    console.log('✅ Badges de notificaciones actualizados');
-}
-
-// --- Función de prueba del sistema de notificaciones ---
-function testNotificationSystem() {
-    console.log('🧪 Probando sistema de notificaciones...');
-    
-    // Verificar que hay usuarios admin
-    const adminUsers = users.filter(u => u.role === 'admin');
-    console.log('👥 Usuarios admin encontrados:', adminUsers);
-    
-    if (adminUsers.length === 0) {
-        showAlert('❌ No se encontraron usuarios administradores para enviar notificaciones de prueba.');
-        return;
-    }
-    
-    // Enviar notificación de prueba
-    const testMessage = `🧪 NOTIFICACIÓN DE PRUEBA: El sistema de notificaciones está funcionando correctamente. Fecha: ${new Date().toLocaleString()}`;
-    sendNotification('admin', testMessage);
-    
-    // Actualizar la vista de notificaciones
-    renderAdminNotifications(1);
-    
-    showAlert('✅ Notificación de prueba enviada. Verifica en la pestaña de notificaciones.');
-}
-
-// --- Función para limpiar notificaciones antiguas ---
-function cleanOldNotifications() {
-    console.log('🧹 Limpiando notificaciones antiguas...');
-    
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const initialCount = notifications.length;
-    const oldNotifications = notifications.filter(n => new Date(n.timestamp) < thirtyDaysAgo);
-    
-    // Eliminar notificaciones antiguas
-    notifications = notifications.filter(n => new Date(n.timestamp) >= thirtyDaysAgo);
-    
-    if (oldNotifications.length > 0) {
-        saveNotifications();
-        console.log(`🗑️ Eliminadas ${oldNotifications.length} notificaciones antiguas (más de 30 días)`);
-        showAlert(`🧹 Limpieza completada:\n\n🗑️ Se eliminaron ${oldNotifications.length} notificaciones antiguas (más de 30 días)\n📊 Total de notificaciones: ${initialCount} → ${notifications.length}`);
-    } else {
-        showAlert('ℹ️ No hay notificaciones antiguas para limpiar.\n\nTodas las notificaciones son recientes (menos de 30 días).');
-    }
-    
-    // Actualizar la vista
-    renderAdminNotifications(1);
-    
-    return oldNotifications.length;
-}
-
-// --- Función para verificar el estado del sistema de notificaciones ---
-function checkNotificationSystemStatus() {
-    console.log('🔍 Verificando estado del sistema de notificaciones...');
-    
-    const adminUsers = users.filter(u => u.role === 'admin');
-    const totalNotifications = notifications.length;
-    const unreadNotifications = notifications.filter(n => !n.read).length;
-    const adminNotifications = notifications.filter(n => {
-        const targetUser = users.find(u => u.id === n.userId);
-        return targetUser && targetUser.role === 'admin';
-    });
-    const unreadAdminNotifications = adminNotifications.filter(n => !n.read);
-    
-    console.log('📊 Estado del sistema:');
-    console.log(`  - Usuarios admin: ${adminUsers.length}`);
-    console.log(`  - Total notificaciones: ${totalNotifications}`);
-    console.log(`  - Notificaciones no leídas: ${unreadNotifications}`);
-    console.log(`  - Notificaciones admin: ${adminNotifications.length}`);
-    console.log(`  - Notificaciones admin no leídas: ${unreadAdminNotifications.length}`);
-    
-    // Mostrar alerta con el estado del sistema
-    const statusMessage = `🔍 Estado del Sistema de Notificaciones:\n\n` +
-        `👥 Usuarios administradores: ${adminUsers.length}\n` +
-        `📨 Total de notificaciones: ${totalNotifications}\n` +
-        `📬 Notificaciones no leídas: ${unreadNotifications}\n` +
-        `👨‍💼 Notificaciones para admin: ${adminNotifications.length}\n` +
-        `🔔 Notificaciones admin no leídas: ${unreadAdminNotifications.length}\n\n` +
-        `${adminUsers.length === 0 ? '⚠️ ADVERTENCIA: No hay usuarios administradores configurados' : '✅ Sistema funcionando correctamente'}`;
-    
-    showAlert(statusMessage);
-    
-    return {
-        adminUsers: adminUsers.length,
-        totalNotifications,
-        unreadNotifications,
-        adminNotifications: adminNotifications.length,
-        unreadAdminNotifications: unreadAdminNotifications.length
-    };
-}
-
-// --- Función para simular finalización de servicio y verificar notificaciones ---
-function testServiceFinalizationNotification() {
-    console.log('🧪 Probando notificación de finalización de servicio...');
-    
-    // Verificar que hay usuarios admin
-    const adminUsers = users.filter(u => u.role === 'admin');
-    if (adminUsers.length === 0) {
-        showAlert('❌ No hay usuarios administradores para enviar notificaciones de prueba.');
-        return;
-    }
-    
-    // Verificar que hay servicios disponibles
-    if (services.length === 0) {
-        showAlert('❌ No hay servicios disponibles para la prueba.');
-        return;
-    }
-    
-    // Buscar un servicio que no esté finalizado
-    const availableService = services.find(s => s.status !== 'Finalizado' && s.status !== 'Cancelado');
-    if (!availableService) {
-        showAlert('❌ No hay servicios disponibles para finalizar (todos están finalizados o cancelados).');
-        return;
-    }
-    
-    // Simular notificación de finalización
-    const testMessage = `🧪 PRUEBA: El servicio ID: ${availableService.id} ha sido finalizado por el técnico ${currentUser?.username || 'Técnico de Prueba'}. Cliente: ${availableService.clientName || 'Cliente de Prueba'}, Ubicación: ${availableService.location || 'Ubicación de Prueba'}`;
-    
-    console.log(`📨 Enviando notificación de prueba: ${testMessage}`);
-    sendNotification('admin', testMessage);
-    
-    // Actualizar la vista de notificaciones
-    renderAdminNotifications(1);
-    
-    showAlert(`✅ Notificación de finalización de servicio enviada.\n\nServicio: ${availableService.id}\nCliente: ${availableService.clientName || 'Cliente de Prueba'}\n\nVerifica en la pestaña de notificaciones del administrador.`);
-}
-
-// --- Función para diagnosticar el estado del formulario de finalización ---
-function diagnoseFinalizationForm() {
-    console.log('🔍 Diagnosticando formulario de finalización...');
-    
-    const formData = {
-        serviceId: document.getElementById('edit-service-id')?.value || 'No encontrado',
-        date: document.getElementById('service-date')?.value || 'No encontrado',
-        serviceCode: document.getElementById('service-code')?.value || 'No encontrado',
-        safeType: document.getElementById('service-type')?.value || 'No encontrado',
-        description: document.getElementById('service-description')?.value || 'No encontrado',
-        location: document.getElementById('service-location')?.value || 'No encontrado',
-        clientName: document.getElementById('service-client-name')?.value || 'No encontrado',
-        clientPhone: document.getElementById('service-client-phone')?.value || 'No encontrado',
-        status: document.getElementById('service-status')?.value || 'No encontrado'
-    };
-    
-    console.log('📋 Datos del formulario:', formData);
-    
-    // Verificar campos requeridos para finalización
-    const photoInput = document.getElementById('service-photo');
-    const photoPreview = document.getElementById('service-photo-preview');
-    const hasPhoto = photoInput?.files.length > 0 || (photoPreview?.src && photoPreview.src !== 'data:,' && !photoPreview.classList.contains('d-none'));
-    
-    const signatureStatus = {
-        hasClientSignature: signaturePadClient && !signaturePadClient.isEmpty(),
-        hasTechnicianSignature: signaturePadTechnician && !signaturePadTechnician.isEmpty(),
-        hasPhoto: hasPhoto
-    };
-    
-    console.log('✍️ Estado de firmas y foto:', signatureStatus);
-    
-    // Verificar si faltan campos
-    let missingFields = [];
-    if (!hasPhoto) missingFields.push('foto de evidencia');
-    if (signaturePadClient && signaturePadClient.isEmpty()) missingFields.push('firma del cliente');
-    if (signaturePadTechnician && signaturePadTechnician.isEmpty()) missingFields.push('firma del técnico');
-    
-    // Verificar estado del almacenamiento
-    const storageStats = getStorageStats();
-    const storageStatus = {
-        services: storageStats.services,
-        notifications: storageStats.notifications,
-        reports: storageStats.reports,
-        totalSize: storageStats.totalSize,
-        isNearLimit: storageStats.totalSize > 5000000 // 5MB aproximado
-    };
-    
-    const diagnosis = {
-        formComplete: Object.values(formData).every(value => value !== 'No encontrado' && value !== ''),
-        hasRequiredFields: missingFields.length === 0,
-        missingFields: missingFields,
-        currentUser: currentUser ? { username: currentUser.username, role: currentUser.role } : 'No hay usuario',
-        modalOpen: document.getElementById('registerServiceModal')?.classList.contains('show') || false,
-        storageStatus: storageStatus
-    };
-    
-    console.log('🔍 Diagnóstico completo:', diagnosis);
-    
-    const message = `🔍 Diagnóstico del Formulario de Finalización:\n\n` +
-        `📋 Formulario completo: ${diagnosis.formComplete ? '✅' : '❌'}\n` +
-        `✅ Campos requeridos: ${diagnosis.hasRequiredFields ? '✅' : '❌'}\n` +
-        `👤 Usuario: ${diagnosis.currentUser.username || 'No encontrado'} (${diagnosis.currentUser.role || 'No encontrado'})\n` +
-        `🪟 Modal abierto: ${diagnosis.modalOpen ? '✅' : '❌'}\n\n` +
-        `💾 Almacenamiento:\n` +
-        `   - Servicios: ${storageStats.services}\n` +
-        `   - Notificaciones: ${storageStats.notifications}\n` +
-        `   - Reportes: ${storageStats.reports}\n` +
-        `   - Tamaño: ${(storageStats.totalSize / 1024 / 1024).toFixed(2)} MB\n` +
-        `   - Estado: ${storageStatus.isNearLimit ? '⚠️ Cerca del límite' : '✅ Normal'}\n\n` +
-        `${missingFields.length > 0 ? `❌ Campos faltantes: ${missingFields.join(', ')}` : '✅ Todos los campos están completos'}`;
-    
-    showAlert(message);
-    
-    return diagnosis;
-}
-
-
-
-
-
-// --- Función para cerrar modales de manera robusta ---
-function closeModalSafely(modalId) {
-    console.log(`🔒 Intentando cerrar modal: ${modalId}`);
-    
-    try {
-        // Intentar obtener la instancia del modal
-        const modalInstance = bootstrap.Modal.getInstance(document.getElementById(modalId));
-        if (modalInstance) {
-            modalInstance.hide();
-            console.log(`✅ Modal ${modalId} cerrado exitosamente`);
-            return true;
-        } else {
-            // Si no hay instancia, intentar crear una nueva y ocultarla
-            const modalElement = document.getElementById(modalId);
-            if (modalElement) {
-                const newModalInstance = new bootstrap.Modal(modalElement);
-                newModalInstance.hide();
-                console.log(`✅ Modal ${modalId} cerrado con nueva instancia`);
-                return true;
-            } else {
-                console.warn(`⚠️ No se encontró el elemento del modal: ${modalId}`);
-                return false;
-            }
-        }
-    } catch (error) {
-        console.error(`❌ Error al cerrar modal ${modalId}:`, error);
-        return false;
     }
 }
 
@@ -3838,20 +5663,24 @@ function exportServicesToExcel() {
 }
 
 // Funciones para el módulo de Costo Servicios
-function renderCostoServiciosList(filteredCostoServicios = costoServicios) {
+function renderCostoServiciosList(filteredCostoServicios = costoServicios, page = 1) {
+    currentCostoServiciosPage = page;
     const costoServiciosList = document.getElementById('costo-servicios-list');
     const costoServiciosCards = document.getElementById('costo-servicios-cards');
     
+    // Verificar que los elementos existan
+    if (!costoServiciosList || !costoServiciosCards) {
+        console.error('Elementos de tabla de costo servicios no encontrados');
+        return;
+    }
+    
     costoServiciosList.innerHTML = '';
     costoServiciosCards.innerHTML = '';
-    
-    console.log('📋 Renderizando lista de costo servicios:', filteredCostoServicios);
-    
     if (filteredCostoServicios.length === 0) {
         // Mensaje para tabla
         const noResultsRow = document.createElement('tr');
         noResultsRow.innerHTML = `
-            <td colspan="6" class="text-center text-muted py-4">
+            <td colspan="7" class="text-center text-muted py-4" style="text-align: center !important; vertical-align: middle;">
                 <i class="bi bi-currency-dollar" style="font-size: 2rem;"></i>
                 <br><br>
                 <strong>No hay servicios de costo registrados</strong>
@@ -3868,19 +5697,49 @@ function renderCostoServiciosList(filteredCostoServicios = costoServicios) {
             <strong>No hay servicios de costo registrados</strong>
         `;
         costoServiciosCards.appendChild(noResultsCard);
+        
+        // Eliminar paginación cuando la tabla está vacía
+        const costoServiciosTable = document.getElementById('costo-servicios-list').closest('table');
+        const paginationContainer = costoServiciosTable ? costoServiciosTable.closest('.card-body') : null;
+        
+        if (paginationContainer) {
+            // Eliminar cualquier paginación existente
+            const existingPagination = paginationContainer.querySelector('.pagination-container');
+            if (existingPagination) {
+                existingPagination.remove();
+            }
+            
+            // Eliminar el elemento antiguo del HTML si existe
+            const oldPagination = document.getElementById('costo-servicios-pagination');
+            if (oldPagination) {
+                oldPagination.remove();
+            }
+        }
     } else {
-        filteredCostoServicios.forEach(servicio => {
+        // Aplicar paginación
+        const totalPages = getTotalPages(filteredCostoServicios.length, ITEMS_PER_PAGE_COSTO_SERVICIOS);
+        const paginatedServicios = paginateArray(filteredCostoServicios, page, ITEMS_PER_PAGE_COSTO_SERVICIOS);
+        
+        paginatedServicios.forEach((servicio, index) => {
+            // Calcular número de fila global
+            const rowNumber = (page - 1) * ITEMS_PER_PAGE_COSTO_SERVICIOS + index + 1;
+            
             // Generar fila de tabla (vista desktop)
             const row = document.createElement('tr');
             row.innerHTML = `
+                <td>${rowNumber}</td>
                 <td>${servicio.codigo || 'N/A'}</td>
                 <td>${servicio.fecha || 'N/A'}</td>
                 <td>${servicio.tipo || 'N/A'}</td>
                 <td>${servicio.descripcion || 'N/A'}</td>
                 <td>$${(servicio.precio || 0).toLocaleString()}</td>
                 <td>
-                    <button class="btn btn-warning btn-sm me-1" onclick="editCostoServicio('${servicio.id}')" title="Editar servicio">Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteCostoServicio('${servicio.id}')" title="Eliminar servicio">Eliminar</button>
+                    <button class="btn btn-warning btn-sm me-1" onclick="editCostoServicio('${servicio.id}')" title="Editar servicio">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteCostoServicio('${servicio.id}')" title="Eliminar servicio">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
                 </td>
             `;
             costoServiciosList.appendChild(row);
@@ -3908,21 +5767,73 @@ function renderCostoServiciosList(filteredCostoServicios = costoServicios) {
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-warning btn-sm" onclick="editCostoServicio('${servicio.id}')">Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteCostoServicio('${servicio.id}')">Eliminar</button>
+                    <button class="btn btn-warning btn-sm me-1" onclick="editCostoServicio('${servicio.id}')">
+                        <i class="bi bi-pencil-fill"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteCostoServicio('${servicio.id}')">
+                        <i class="bi bi-trash-fill"></i> Eliminar
+                    </button>
                 </div>
             `;
             costoServiciosCards.appendChild(serviceCard);
         });
+        
+        // Generar controles de paginación
+        const costoServiciosTable = document.getElementById('costo-servicios-list').closest('table');
+        const paginationContainer = costoServiciosTable ? costoServiciosTable.closest('.card-body') : null;
+        
+        if (paginationContainer) {
+            // Eliminar cualquier paginación existente
+            const existingPagination = paginationContainer.querySelector('.pagination-container');
+            if (existingPagination) {
+                existingPagination.remove();
+            }
+            
+            // Eliminar el elemento antiguo del HTML si existe
+            const oldPagination = document.getElementById('costo-servicios-pagination');
+            if (oldPagination) {
+                oldPagination.remove();
+            }
+            
+            const paginationDiv = document.createElement('div');
+            paginationDiv.id = 'costo-servicios-pagination';
+            paginationDiv.className = 'pagination-container';
+            paginationContainer.appendChild(paginationDiv);
+            
+            generatePaginationControls(
+                page,
+                totalPages,
+                'costo-servicios-pagination',
+                (newPage) => {
+                    renderCostoServiciosList(filteredCostoServicios, newPage);
+                }
+            );
+        }
     }
-    
-    console.log('✅ Lista de costo servicios renderizada');
 }
 
 function filterCostoServicios() {
     const searchTerm = document.getElementById('search-costo-servicios').value.toLowerCase();
-    const dateFrom = document.getElementById('filter-costo-servicio-date-from').value;
-    const dateTo = document.getElementById('filter-costo-servicio-date-to').value;
+    const dateFromInput = document.getElementById('filter-costo-servicio-date-from');
+    const dateToInput = document.getElementById('filter-costo-servicio-date-to');
+    
+    // Obtener valores y convertir formato de fecha si es necesario
+    let dateFrom = dateFromInput.value;
+    let dateTo = dateToInput.value;
+    
+    // Convertir formato dd/mm/aaaa a aaaa-mm-dd si es necesario
+    if (dateFrom && dateFrom.includes('/')) {
+        const parts = dateFrom.split('/');
+        if (parts.length === 3) {
+            dateFrom = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+    }
+    if (dateTo && dateTo.includes('/')) {
+        const parts = dateTo.split('/');
+        if (parts.length === 3) {
+            dateTo = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+    }
 
     let filtered = costoServicios;
 
@@ -3959,13 +5870,8 @@ function filterCostoServicios() {
         });
     }
 
-    renderCostoServiciosList(filtered);
-    console.log('🔍 Filtrado de costo servicios aplicado:', {
-        searchTerm,
-        dateFrom,
-        dateTo,
-        resultados: filtered.length
-    });
+    // Resetear a página 1 cuando se filtran los resultados
+    renderCostoServiciosList(filtered, 1);
 }
 
 function clearCostoServiciosFilters() {
@@ -3973,26 +5879,18 @@ function clearCostoServiciosFilters() {
     document.getElementById('filter-costo-servicio-date-from').value = '';
     document.getElementById('filter-costo-servicio-date-to').value = '';
     filterCostoServicios();
-    console.log('🧹 Filtros de costo servicios limpiados');
 }
 
 function editCostoServicio(id) {
-    console.log('🔍 Editando servicio con ID:', id);
-    
     // Recargar datos desde localStorage para asegurar que estén actualizados
     costoServicios = JSON.parse(localStorage.getItem('costoServicios')) || [];
-    console.log('📊 Datos recargados desde localStorage:', costoServicios);
-    
     // Asegurar que costoServicios esté cargado
     if (!costoServicios || costoServicios.length === 0) {
-        console.error('❌ No hay datos de costo servicios cargados');
         showAlert('Error: No hay datos de servicios disponibles');
         return;
     }
     
     const servicio = costoServicios.find(s => s.id === id);
-    console.log('✅ Servicio encontrado:', servicio);
-    
     if (servicio) {
         // Cargar datos en el formulario ANTES de abrir el modal
         forceLoadDataInModal(servicio);
@@ -4000,11 +5898,7 @@ function editCostoServicio(id) {
         // Abrir el modal
         const modal = new bootstrap.Modal(document.getElementById('createCostoServicioModal'));
         modal.show();
-        
-        console.log('✅ Modal abierto con datos cargados');
-        
     } else {
-        console.error('❌ No se encontró el servicio con ID:', id);
         showAlert('Error: No se encontró el servicio a editar');
     }
 }
@@ -4014,7 +5908,120 @@ function deleteCostoServicio(id) {
         if (confirmed) {
             costoServicios = costoServicios.filter(s => s.id !== id);
             saveCostoServicios();
-            renderCostoServiciosList();
+            // Recalcular página actual si es necesario
+            const totalItems = costoServicios.length;
+            const maxPage = Math.ceil(totalItems / ITEMS_PER_PAGE_COSTO_SERVICIOS);
+            const pageToShow = currentCostoServiciosPage > maxPage && maxPage > 0 ? maxPage : currentCostoServiciosPage;
+            renderCostoServiciosList(costoServicios, pageToShow);
+        }
+    });
+}
+
+// Funciones para eliminar costos de servicios masivamente
+function openDeleteCostoServiciosModal() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteCostoServiciosModal'));
+    const deleteCostoServiciosList = document.getElementById('delete-costo-servicios-list');
+    const searchInput = document.getElementById('search-delete-costo-servicios');
+    if (searchInput) searchInput.value = '';
+    deleteCostoServiciosList.innerHTML = '';
+    
+    // Mostrar todos los costos de servicios con checkboxes
+    costoServicios.forEach(servicio => {
+        const servicioCard = document.createElement('div');
+        servicioCard.className = 'card mb-2';
+        servicioCard.style.border = '1px solid #dee2e6';
+        servicioCard.innerHTML = `
+            <div class="card-body d-flex align-items-center">
+                <input type="checkbox" class="form-check-input me-3" value="${servicio.id}" id="costo-servicio-checkbox-${servicio.id}" style="width: 20px; height: 20px;">
+                <div class="flex-grow-1">
+                    <strong>Código: ${servicio.codigo || 'N/A'}</strong>
+                    <div class="text-muted">Tipo: ${servicio.tipo || 'N/A'}</div>
+                    <div class="text-muted">Descripción: ${servicio.descripcion || 'N/A'}</div>
+                    <div class="text-muted">Precio: $${(servicio.precio || 0).toLocaleString()}</div>
+                </div>
+            </div>
+        `;
+        deleteCostoServiciosList.appendChild(servicioCard);
+    });
+    
+    modal.show();
+}
+
+function selectAllCostoServicios() {
+    const checkboxes = document.querySelectorAll('#delete-costo-servicios-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllCostoServicios() {
+    const checkboxes = document.querySelectorAll('#delete-costo-servicios-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+function confirmDeleteCostoServicios() {
+    const checkboxes = document.querySelectorAll('#delete-costo-servicios-list input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showAlert('Por favor, selecciona al menos un costo de servicio para eliminar.');
+        return;
+    }
+    
+    showConfirm(`¿Estás seguro de que quieres eliminar ${selectedIds.length} costo(s) de servicio(s)? Esta acción no se puede deshacer.`, (result) => {
+        if (result) {
+            // Cerrar modal de selección
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteCostoServiciosModal'));
+            modal.hide();
+            
+            // Inicializar modal de progreso
+            initProgressModal('delete', selectedIds.length);
+            
+            let processed = 0;
+            let successes = 0;
+            let errors = 0;
+            
+            // Función para eliminar cada costo de servicio de forma asíncrona
+            function deleteCostoServicio(index) {
+                if (index >= selectedIds.length) {
+                    // Eliminación completada
+                    saveCostoServicios();
+                    
+                    // Recalcular página actual si es necesario
+                    const totalItems = costoServicios.length;
+                    const maxPage = Math.ceil(totalItems / ITEMS_PER_PAGE_COSTO_SERVICIOS);
+                    const pageToShow = totalItems === 0 ? 1 : (currentCostoServiciosPage > maxPage && maxPage > 0 ? maxPage : currentCostoServiciosPage);
+                    renderCostoServiciosList(costoServicios, pageToShow);
+                    
+                    completeProgress('delete', successes, 
+                        `Eliminación completada. ${successes} registro(s) eliminado(s).`, 
+                        successes, 0, errors);
+                    return;
+                }
+                
+                const servicioId = selectedIds[index];
+                const initialLength = costoServicios.length;
+                costoServicios = costoServicios.filter(s => s.id !== servicioId);
+                
+                if (costoServicios.length < initialLength) {
+                    successes++;
+                } else {
+                    errors++;
+                }
+                
+                processed++;
+                updateProgress(processed, selectedIds.length, 
+                    `Eliminando registro ${processed} de ${selectedIds.length}...`, 
+                    successes, 0, errors);
+                
+                // Procesar siguiente costo de servicio con pequeño delay
+                setTimeout(() => deleteCostoServicio(index + 1), 10);
+            }
+            
+            // Iniciar eliminación
+            deleteCostoServicio(0);
         }
     });
 }
@@ -4038,11 +6045,90 @@ function importServicesFromExcel() {
     document.getElementById('import-services-file').click();
 }
 
+// Función para convertir fecha de formato dd/mm/yyyy a formato YYYY-MM-DD
+function convertDateToISO(dateString) {
+    if (!dateString) return '';
+    
+    // Si ya está en formato ISO (YYYY-MM-DD), devolverla
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        return dateString;
+    }
+    
+    // Si está en formato dd/mm/yyyy, convertirla
+    if (typeof dateString === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+        const [day, month, year] = dateString.split('/');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // Intentar parsear como fecha
+    try {
+        const date = new Date(dateString);
+        if (!isNaN(date.getTime())) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+    } catch (e) {
+        // Si hay error, devolver string vacío
+    }
+    
+    return '';
+}
+
 // Función para convertir fecha serial de Excel a formato YYYY-MM-DD
 function convertExcelDateToISO(excelDate) {
-    // Si ya es una fecha válida en formato string, la devolvemos
+    // Si ya es una fecha válida en formato string ISO, la devolvemos
     if (typeof excelDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(excelDate)) {
         return excelDate;
+    }
+    
+    // Si es un string en formato de fecha, detectar el formato
+    if (typeof excelDate === 'string') {
+        // Formato mm/dd/yyyy o dd/mm/yyyy
+        const mmddyyyyMatch = excelDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (mmddyyyyMatch) {
+            const firstPart = parseInt(mmddyyyyMatch[1], 10);
+            const secondPart = parseInt(mmddyyyyMatch[2], 10);
+            const year = mmddyyyyMatch[3];
+            
+            // Si el primer número es <= 12 y el segundo es > 12, es formato mm/dd/yyyy
+            // Si ambos son <= 12, asumimos mm/dd/yyyy (formato común en Excel)
+            // Si el primer número es > 12, es formato dd/mm/yyyy
+            let month, day;
+            if (firstPart > 12) {
+                // Es formato dd/mm/yyyy
+                day = String(firstPart).padStart(2, '0');
+                month = String(secondPart).padStart(2, '0');
+            } else if (secondPart > 12) {
+                // Es formato mm/dd/yyyy
+                month = String(firstPart).padStart(2, '0');
+                day = String(secondPart).padStart(2, '0');
+            } else {
+                // Ambos son <= 12, asumimos mm/dd/yyyy (formato estándar de Excel)
+                month = String(firstPart).padStart(2, '0');
+                day = String(secondPart).padStart(2, '0');
+            }
+            
+            // Validar que el mes y día sean válidos
+            const monthNum = parseInt(month, 10);
+            const dayNum = parseInt(day, 10);
+            if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+                return `${year}-${month}-${day}`;
+            }
+        }
+        
+        // Formato dd/mm/yyyy (ya manejado anteriormente)
+        const ddmmyyyyMatch = excelDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (ddmmyyyyMatch) {
+            const [day, month, year] = ddmmyyyyMatch.slice(1);
+            const dayNum = parseInt(day, 10);
+            const monthNum = parseInt(month, 10);
+            
+            if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12) {
+                return `${year}-${month}-${day}`;
+            }
+        }
     }
     
     // Si es un número (fecha serial de Excel), la convertimos
@@ -4053,25 +6139,24 @@ function convertExcelDateToISO(excelDate) {
         const excelEpoch = new Date(1900, 0, 1);
         const date = new Date(excelEpoch.getTime() + (excelDate - 2) * 24 * 60 * 60 * 1000);
         
-        // Formatear a YYYY-MM-DD
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        // Formatear a YYYY-MM-DD usando UTC para evitar problemas de zona horaria
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
         
         return `${year}-${month}-${day}`;
     }
     
-    // Si es un objeto Date, lo convertimos
+    // Si es un objeto Date, lo convertimos usando UTC
     if (excelDate instanceof Date) {
-        const year = excelDate.getFullYear();
-        const month = String(excelDate.getMonth() + 1).padStart(2, '0');
-        const day = String(excelDate.getDate()).padStart(2, '0');
+        const year = excelDate.getUTCFullYear();
+        const month = String(excelDate.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(excelDate.getUTCDate()).padStart(2, '0');
         
         return `${year}-${month}-${day}`;
     }
     
     // Si no podemos convertir, devolvemos el valor original
-    console.warn('No se pudo convertir la fecha:', excelDate);
     return excelDate;
 }
 
@@ -4087,23 +6172,43 @@ function handleServicesImport(event) {
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-            console.log('Datos leídos del Excel:', jsonData);
-            console.log('Columnas disponibles:', Object.keys(jsonData[0] || {}));
-
             if (jsonData.length === 0) {
                 showAlert('El archivo Excel está vacío o no contiene datos válidos.');
+                event.target.value = '';
                 return;
             }
+
+            // Inicializar modal de progreso
+            initProgressModal('import', jsonData.length);
 
             let importedCount = 0;
             let errors = [];
             let warnings = [];
+            let processed = 0;
 
-            jsonData.forEach((row, index) => {
+            // Función para procesar cada fila de forma asíncrona
+            function processRow(index) {
+                if (index >= jsonData.length) {
+                    // Procesamiento completado
+                    saveServices();
+                    renderAdminServicesList();
+                    updateServicesStatistics();
+                    
+                    let finalMessage = `Importación completada. ${importedCount} registro(s) importado(s) exitosamente.`;
+                    if (warnings.length > 0) {
+                        finalMessage += ` ${warnings.length} advertencia(s) encontrada(s).`;
+                    }
+                    if (errors.length > 0) {
+                        finalMessage += ` ${errors.length} error(es) encontrado(s).`;
+                    }
+                    
+                    completeProgress('import', importedCount, finalMessage, importedCount, warnings.length, errors.length);
+                    event.target.value = '';
+                    return;
+                }
+
+                const row = jsonData[index];
                 try {
-                    console.log(`Procesando fila ${index + 2}:`, row);
-
                     // Validar campos obligatorios (aceptar mayúsculas y minúsculas)
                     const fechaRaw = row['Fecha'] || row['FECHA'];
                     const nombreCliente = row['Nombre del Cliente'] || row['NOMBRE DEL CLIENTE'];
@@ -4111,84 +6216,97 @@ function handleServicesImport(event) {
                     
                     if (!fechaRaw) {
                         errors.push(`Fila ${index + 2}: Falta campo obligatorio 'Fecha' o 'FECHA'`);
-                        return;
-                    }
-                    if (!nombreCliente) {
+                    } else if (!nombreCliente) {
                         errors.push(`Fila ${index + 2}: Falta campo obligatorio 'Nombre del Cliente' o 'NOMBRE DEL CLIENTE'`);
-                        return;
-                    }
-                    if (!codigoServicio) {
+                    } else if (!codigoServicio) {
                         errors.push(`Fila ${index + 2}: Falta campo obligatorio 'Código de Servicio' o 'CODIGO DE SERVICIO'`);
-                        return;
+                    } else {
+                        // Convertir la fecha de Excel a formato ISO
+                        const fecha = convertExcelDateToISO(fechaRaw);
+                        // Buscar el tipo de servicio y descripción basado en el código
+                        const costoServicio = costoServicios.find(cs => cs.codigo === codigoServicio);
+                        if (!costoServicio) {
+                            warnings.push(`Fila ${index + 2}: Código de servicio '${codigoServicio}' no encontrado en Costo Servicios`);
+                        }
+                        
+                        const safeType = costoServicio ? costoServicio.tipo : (row['Tipo de Servicio'] || row['TIPO DE SERVICIO'] || '');
+                        const description = costoServicio ? costoServicio.descripcion : (row['Descripción'] || row['DESCRIPCION'] || '');
+
+                        // Obtener el consecutivo del cliente para generar el ID
+                        const clientConsecutive = getClientConsecutiveByName(nombreCliente);
+                        
+                        // Buscar el cliente por nombre para obtener su información
+                        const client = clients.find(c => c.name.toLowerCase() === nombreCliente.toLowerCase());
+                        
+                        // Usar la dirección del cliente si existe, sino usar la del Excel, sino dejar vacío
+                        const location = client && client.address 
+                            ? client.address 
+                            : (row['Ubicación'] || row['UBICACIÓN'] || row['Dirección'] || row['DIRECCIÓN'] || row['Dirección del Cliente'] || row['DIRECCIÓN DEL CLIENTE'] || row['Ubicación del Cliente'] || row['UBICACIÓN DEL CLIENTE'] || '');
+                        
+                        // Obtener hora de servicio del Excel
+                        const horaRaw = row['Hora'] || row['HORA'] || row['Hora de Servicio'] || row['HORA DE SERVICIO'] || row['Hora Servicio'] || row['HORA SERVICIO'] || '';
+                        // Convertir hora de Excel (puede ser decimal) a formato de hora de 12 horas
+                        let horaServicio = convertExcelTimeToHourFormat(horaRaw);
+                        // Si no se pudo convertir con convertExcelTimeToHourFormat, intentar con convertTo12HourFormat
+                        if (!horaServicio && horaRaw) {
+                            horaServicio = convertTo12HourFormat(horaRaw);
+                        }
+                        // Asegurar que sea string y esté en formato de 12 horas
+                        horaServicio = String(horaServicio || '').trim();
+                        
+                        // Obtener NIT/CC del Excel o del cliente
+                        const clientNit = row['NIT/CC'] || row['NIT'] || row['CC'] || row['NIT O CC'] || row['NIT O CC'] || (client ? client.nit : '') || '';
+                        
+                        // Obtener EMAIL del Excel o del cliente
+                        const clientEmail = row['Email'] || row['EMAIL'] || row['email'] || row['Email del Cliente'] || row['EMAIL DEL CLIENTE'] || (client ? client.email : '') || '';
+                        
+                        const newService = {
+                            id: generateServiceId(clientConsecutive),
+                            date: fecha,
+                            time: horaServicio,
+                            clientName: nombreCliente,
+                            serviceCode: codigoServicio,
+                            safeType: safeType,
+                            description: description,
+                            location: location,
+                            clientPhone: row['Teléfono del Cliente'] || row['TELEFONO DEL CLIENTE'] || (client ? client.phone : '') || '',
+                            clientNit: clientNit,
+                            clientEmail: clientEmail,
+                            status: row['Estado'] || row['ESTADO'] || 'Pendiente',
+                            technicianId: '',
+                            startTime: '',
+                            finalizationOrCancellationTime: '',
+                            startLocation: null,
+                            finalizationOrCancellationLocation: null,
+                            photoData: '',
+                            technicianSignature: '',
+                            clientSignature: '',
+                            cancellationReason: ''
+                        };
+                        
+                        services.push(newService);
+                        importedCount++;
                     }
-
-                    // Convertir la fecha de Excel a formato ISO
-                    const fecha = convertExcelDateToISO(fechaRaw);
-                    console.log(`Fila ${index + 2}: Fecha original: ${fechaRaw}, Fecha convertida: ${fecha}`);
-
-                    // Buscar el tipo de servicio y descripción basado en el código
-                    const costoServicio = costoServicios.find(cs => cs.codigo === codigoServicio);
-                    if (!costoServicio) {
-                        warnings.push(`Fila ${index + 2}: Código de servicio '${codigoServicio}' no encontrado en Costo Servicios`);
-                    }
-                    
-                    const safeType = costoServicio ? costoServicio.tipo : (row['Tipo de Servicio'] || row['TIPO DE SERVICIO'] || '');
-                    const description = costoServicio ? costoServicio.descripcion : (row['Descripción'] || row['DESCRIPCION'] || '');
-
-                    const newService = {
-                        id: generateServiceId(),
-                        date: fecha,
-                        clientName: nombreCliente,
-                        serviceCode: codigoServicio,
-                        safeType: safeType,
-                        description: description,
-                        location: row['Ubicación'] || row['UBICACIÓN'] || '',
-                        clientPhone: row['Teléfono del Cliente'] || row['TELEFONO DEL CLIENTE'] || '',
-                        status: row['Estado'] || row['ESTADO'] || 'Pendiente',
-                        technicianId: '',
-                        startTime: '',
-                        finalizationOrCancellationTime: '',
-                        startLocation: null,
-                        finalizationOrCancellationLocation: null,
-                        photoData: '',
-                        technicianSignature: '',
-                        clientSignature: '',
-                        cancellationReason: ''
-                    };
-                    
-                    services.push(newService);
-                    importedCount++;
-                    console.log(`Servicio importado exitosamente:`, newService);
                 } catch (rowError) {
                     errors.push(`Fila ${index + 2}: Error al procesar - ${rowError.message}`);
-                    console.error(`Error en fila ${index + 2}:`, rowError);
                 }
-            });
 
-            saveServices();
-            renderAdminServicesList();
-            updateServicesStatistics();
-            
-            let message = `Se importaron ${importedCount} servicios exitosamente`;
-            
-            if (warnings.length > 0) {
-                message += `\n\nAdvertencias:\n${warnings.slice(0, 3).join('\n')}`;
-                if (warnings.length > 3) {
-                    message += `\n... y ${warnings.length - 3} advertencias más`;
-                }
+                processed++;
+                updateProgress(processed, jsonData.length, 
+                    `Procesando registro ${processed} de ${jsonData.length}...`, 
+                    importedCount, warnings.length, errors.length);
+                
+                // Procesar siguiente fila con pequeño delay
+                setTimeout(() => processRow(index + 1), 10);
             }
+
+            // Iniciar procesamiento
+            processRow(0);
             
-            if (errors.length > 0) {
-                message += `\n\nErrores encontrados:\n${errors.slice(0, 5).join('\n')}`;
-                if (errors.length > 5) {
-                    message += `\n... y ${errors.length - 5} errores más`;
-                }
-            }
-            
-            showAlert(message);
         } catch (error) {
-            console.error('Error al importar archivo:', error);
-            showAlert(`Error al importar el archivo: ${error.message}\n\nEstructura esperada:\n- Fecha (o FECHA)\n- Nombre del Cliente (o NOMBRE DEL CLIENTE)\n- Código de Servicio (o CODIGO DE SERVICIO)\n- Ubicación (o UBICACIÓN)\n- Teléfono del Cliente (o TELEFONO DEL CLIENTE)\n- Estado (o ESTADO)\n\nEl sistema ahora acepta tanto mayúsculas como minúsculas.`);
+            closeProgressModal();
+            showAlert(`Error al importar el archivo: ${error.message}\n\nEstructura esperada:\n- Fecha (o FECHA) [Obligatorio]\n- Nombre del Cliente (o NOMBRE DEL CLIENTE) [Obligatorio]\n- Código de Servicio (o CODIGO DE SERVICIO) [Obligatorio]\n- Hora (o HORA o Hora de Servicio) [Opcional]\n- Ubicación/Dirección (o UBICACIÓN/DIRECCIÓN o Dirección del Cliente) [Opcional]\n- Teléfono del Cliente (o TELEFONO DEL CLIENTE) [Opcional]\n- NIT/CC (o NIT o CC) [Opcional]\n- Email (o EMAIL o Email del Cliente) [Opcional]\n- Estado (o ESTADO) [Opcional, por defecto: Pendiente]\n\nEl sistema ahora acepta tanto mayúsculas como minúsculas.`);
+            event.target.value = '';
         }
     };
     reader.readAsArrayBuffer(file);
@@ -4206,97 +6324,119 @@ function handleCostoServiciosImport(event) {
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-            console.log('Datos leídos del Excel de costo servicios:', jsonData);
-            console.log('Columnas disponibles:', Object.keys(jsonData[0] || {}));
-
             if (jsonData.length === 0) {
                 showAlert('El archivo Excel está vacío o no contiene datos válidos.');
+                event.target.value = '';
                 return;
             }
+
+            // Inicializar modal de progreso
+            initProgressModal('import', jsonData.length);
 
             let importedCount = 0;
             let errors = [];
             let warnings = [];
+            let processed = 0;
 
-            jsonData.forEach((row, index) => {
+            // Función para procesar cada fila de forma asíncrona
+            function processRow(index) {
+                if (index >= jsonData.length) {
+                    // Procesamiento completado
+                    saveCostoServicios();
+                    renderCostoServiciosList(costoServicios, 1);
+                    populateServiceCodes();
+
+                    let finalMessage = `Importación completada. ${importedCount} registro(s) importado(s) exitosamente.`;
+                    if (warnings.length > 0) {
+                        finalMessage += ` ${warnings.length} advertencia(s) encontrada(s).`;
+                    }
+                    if (errors.length > 0) {
+                        finalMessage += ` ${errors.length} error(es) encontrado(s).`;
+                    }
+
+                    completeProgress('import', importedCount, finalMessage, importedCount, warnings.length, errors.length);
+                    event.target.value = '';
+                    return;
+                }
+
+                const row = jsonData[index];
                 try {
-                    console.log(`Procesando fila ${index + 2}:`, row);
-
                     // Validar campos obligatorios (aceptar mayúsculas y minúsculas)
+                    const codigo = row['Código'] || row['CODIGO'] || row['Código de Servicio'] || row['CODIGO DE SERVICIO'] || row['Código Servicio'] || row['CODIGO SERVICIO'];
                     const tipoServicio = row['Tipo de Servicio'] || row['TIPO DE SERVICIO'] || row['Tipo'] || row['TIPO'];
                     const descripcion = row['Descripción'] || row['DESCRIPCION'] || row['Descripcion'];
                     const precioRaw = row['Precio'] || row['PRECIO'];
+                    const fechaRaw = row['Fecha'] || row['FECHA'] || row['Fecha de Creación'] || row['FECHA DE CREACIÓN'] || row['Fecha Creación'] || row['FECHA CREACIÓN'];
                     
-                    if (!tipoServicio) {
+                    if (!codigo) {
+                        errors.push(`Fila ${index + 2}: Falta campo obligatorio 'Código'`);
+                    } else if (!tipoServicio) {
                         errors.push(`Fila ${index + 2}: Falta campo obligatorio 'Tipo de Servicio'`);
-                        return;
-                    }
-                    if (!descripcion) {
+                    } else if (!descripcion) {
                         errors.push(`Fila ${index + 2}: Falta campo obligatorio 'Descripción'`);
-                        return;
-                    }
-                    if (!precioRaw) {
+                    } else if (!precioRaw) {
                         errors.push(`Fila ${index + 2}: Falta campo obligatorio 'Precio'`);
-                        return;
-                    }
-
-                    // Convertir precio a número
-                    const precio = parseFloat(precioRaw);
-                    if (isNaN(precio) || precio < 0) {
-                        errors.push(`Fila ${index + 2}: El precio debe ser un número válido mayor o igual a 0`);
-                        return;
-                    }
-
-                    // Generar código automático
-                    const codigoGenerado = generateCostoServicioCode();
-
-                    const newServicio = {
-                        id: generateId(),
-                        codigo: codigoGenerado,
-                        tipo: tipoServicio.toString().trim(),
-                        descripcion: descripcion.toString().trim(),
-                        precio: precio
-                    };
-                    
-                    // Verificar si ya existe un servicio con el mismo código
-                    const existingIndex = costoServicios.findIndex(s => s.codigo === newServicio.codigo);
-                    if (existingIndex >= 0) {
-                        costoServicios[existingIndex] = newServicio;
-                        warnings.push(`Fila ${index + 2}: Servicio con código '${newServicio.codigo}' actualizado`);
                     } else {
-                        costoServicios.push(newServicio);
+                        // Convertir precio a número
+                        const precio = parseFloat(precioRaw);
+                        if (isNaN(precio) || precio < 0) {
+                            errors.push(`Fila ${index + 2}: El precio debe ser un número válido mayor o igual a 0`);
+                        } else {
+                            // Usar código del Excel o generar uno si no viene
+                            const codigoFinal = codigo ? codigo.toString().trim() : generateCostoServicioCode();
+                            
+                            // Procesar fecha: usar la del Excel si viene, sino usar la fecha actual
+                            let fechaFinal;
+                            if (fechaRaw) {
+                                // Intentar convertir la fecha del Excel
+                                fechaFinal = convertExcelDateToISO(fechaRaw);
+                                if (!fechaFinal) {
+                                    // Si no se puede convertir, usar la fecha actual
+                                    fechaFinal = new Date().toISOString().split('T')[0];
+                                }
+                            } else {
+                                // Si no viene fecha, usar la fecha actual
+                                fechaFinal = new Date().toISOString().split('T')[0];
+                            }
+
+                            const newServicio = {
+                                id: generateId(),
+                                codigo: codigoFinal,
+                                fecha: fechaFinal,
+                                tipo: tipoServicio.toString().trim(),
+                                descripcion: descripcion.toString().trim(),
+                                precio: precio
+                            };
+                            
+                            // Verificar si ya existe un servicio con el mismo código
+                            const existingIndex = costoServicios.findIndex(s => s.codigo === newServicio.codigo);
+                            if (existingIndex >= 0) {
+                                costoServicios[existingIndex] = newServicio;
+                                warnings.push(`Fila ${index + 2}: Servicio con código '${newServicio.codigo}' actualizado`);
+                            } else {
+                                costoServicios.push(newServicio);
+                            }
+                            importedCount++;
+                        }
                     }
-                    importedCount++;
-                    
-                    console.log(`✅ Servicio procesado: ${newServicio.codigo} - ${newServicio.tipo}`);
                 } catch (rowError) {
-                    console.error(`Error procesando fila ${index + 2}:`, rowError);
                     errors.push(`Fila ${index + 2}: Error al procesar datos`);
                 }
-            });
 
-            // Guardar y actualizar
-            saveCostoServicios();
-            renderCostoServiciosList();
-            populateServiceCodes();
-
-            // Mostrar resultados
-            let message = `✅ Se importaron ${importedCount} servicios exitosamente`;
-            if (warnings.length > 0) {
-                message += `\n\n⚠️ Advertencias:\n${warnings.join('\n')}`;
-            }
-            if (errors.length > 0) {
-                message += `\n\n❌ Errores:\n${errors.join('\n')}`;
+                processed++;
+                updateProgress(processed, jsonData.length, 
+                    `Procesando registro ${processed} de ${jsonData.length}...`, 
+                    importedCount, warnings.length, errors.length);
+                
+                // Procesar siguiente fila con pequeño delay
+                setTimeout(() => processRow(index + 1), 10);
             }
 
-            showAlert(message);
-            
-            // Limpiar el input file
-            event.target.value = '';
+            // Iniciar procesamiento
+            processRow(0);
             
         } catch (error) {
-            console.error('Error al importar archivo:', error);
+            closeProgressModal();
             showAlert('Error al importar el archivo. Verifica que el formato sea correcto y que el archivo no esté corrupto.');
             event.target.value = '';
         }
@@ -4306,14 +6446,12 @@ function handleCostoServiciosImport(event) {
 
 // Funciones para el módulo de Remisiones
 function renderRemisionesList(filteredRemisiones = remisiones) {
-    console.log('🔄 Renderizando lista de remisiones...');
-    console.log('📊 Remisiones a renderizar:', filteredRemisiones);
-    
     const remisionesList = document.getElementById('remisiones-list');
     const remisionesCards = document.getElementById('remisiones-cards');
     
+    // Verificar que los elementos existan
     if (!remisionesList || !remisionesCards) {
-        console.error('❌ Elementos de remisiones no encontrados');
+        console.error('Elementos de tabla de remisiones no encontrados');
         return;
     }
     
@@ -4324,7 +6462,7 @@ function renderRemisionesList(filteredRemisiones = remisiones) {
         // Mensaje para tabla
         const noResultsRow = document.createElement('tr');
         noResultsRow.innerHTML = `
-            <td colspan="8" class="text-center text-muted py-4">
+            <td colspan="11" class="text-center text-muted py-4" style="text-align: center !important; vertical-align: middle;">
                 <i class="bi bi-file-earmark-text" style="font-size: 2rem;"></i>
                 <br><br>
                 <strong>No hay remisiones registradas</strong>
@@ -4342,20 +6480,102 @@ function renderRemisionesList(filteredRemisiones = remisiones) {
         `;
         remisionesCards.appendChild(noResultsCard);
     } else {
-        filteredRemisiones.forEach(remision => {
+        filteredRemisiones.forEach((remision, index) => {
+            // Obtener el servicio asociado
+            const service = remision.serviceId ? services.find(s => s.id === remision.serviceId) : null;
+            
+            // Formatear fecha de remisión
+            let fechaRemision = remision.fechaRemision || remision.fecha || '';
+            let horaRemision = remision.horaRemision || '';
+            
+            // Si no hay fecha de remisión, usar la fecha actual
+            if (!fechaRemision) {
+                const now = new Date();
+                fechaRemision = now.toISOString().split('T')[0];
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const ampm = now.getHours() >= 12 ? 'p. m.' : 'a. m.';
+                const hours12 = now.getHours() % 12 || 12;
+                horaRemision = `${hours12}:${minutes}:${seconds} ${ampm}`;
+            } else {
+                // Formatear fecha como dd/mm/aaaa
+                if (fechaRemision.includes('-')) {
+                    const [year, month, day] = fechaRemision.split('-');
+                    fechaRemision = `${day}/${month}/${year}`;
+                }
+                
+                // Si no hay hora, intentar obtenerla del servicio o usar hora actual
+                if (!horaRemision) {
+                    if (service && service.startTime) {
+                        horaRemision = service.startTime;
+                    } else {
+                        const now = new Date();
+                        const hours = String(now.getHours()).padStart(2, '0');
+                        const minutes = String(now.getMinutes()).padStart(2, '0');
+                        const seconds = String(now.getSeconds()).padStart(2, '0');
+                        const ampm = now.getHours() >= 12 ? 'p. m.' : 'a. m.';
+                        const hours12 = now.getHours() % 12 || 12;
+                        horaRemision = `${hours12}:${minutes}:${seconds} ${ampm}`;
+                    }
+                }
+            }
+            
+            // Formatear fecha de servicio
+            let fechaServicio = service ? service.date : remision.fecha || '';
+            if (fechaServicio && fechaServicio.includes('-')) {
+                const [year, month, day] = fechaServicio.split('-');
+                fechaServicio = `${day}/${month}/${year}`;
+            }
+            
+            // Calcular el precio total real (suma de todos los servicios)
+            let precioTotal = 0;
+            
+            // Calcular precio del servicio principal
+            if (service) {
+                const codigoServicio = remision.codigoServicio || service.serviceCode || '';
+                const costoServicio = costoServicios.find(cs => cs.codigo === codigoServicio);
+                const precioUnitario = costoServicio ? costoServicio.precio : 0;
+                const cantidad = service.quantity || 1;
+                precioTotal += cantidad * precioUnitario;
+                
+                // Sumar servicios adicionales
+                if (service.additionalServices && Array.isArray(service.additionalServices)) {
+                    service.additionalServices.forEach(additionalService => {
+                        // Los servicios adicionales se guardan con: code, type, description, quantity
+                        // Pero también pueden tener: serviceCode (para compatibilidad)
+                        const codigoAdicional = additionalService.code || additionalService.serviceCode || '';
+                        const costoServicioAdicional = costoServicios.find(cs => cs.codigo === codigoAdicional);
+                        const precioUnitarioAdicional = costoServicioAdicional ? costoServicioAdicional.precio : 0;
+                        const cantidadAdicional = additionalService.quantity || 1;
+                        precioTotal += cantidadAdicional * precioUnitarioAdicional;
+                    });
+                }
+            } else {
+                // Si no hay servicio asociado, usar el precio guardado en la remisión
+                precioTotal = remision.precio || 0;
+            }
+            
             // Generar fila de tabla (vista desktop)
             const row = document.createElement('tr');
             row.innerHTML = `
+                <td style="text-align: center;">${index + 1}</td>
                 <td>${remision.id}</td>
-                <td>${remision.fecha}</td>
-                <td>${remision.codigoServicio}</td>
-                <td>${remision.tipoServicio}</td>
-                <td>${remision.cliente}</td>
-                <td>${getTechnicianNameById(remision.tecnicoId)}</td>
-                <td>$${remision.precio.toLocaleString()}</td>
+                <td>${fechaRemision}</td>
+                <td>${horaRemision}</td>
+                <td>${remision.serviceId || '-'}</td>
+                <td>${fechaServicio || '-'}</td>
+                <td>${remision.codigoServicio || '-'}</td>
+                <td>${remision.cliente || '-'}</td>
+                <td>${getTechnicianNameById(remision.tecnicoId) || '-'}</td>
+                <td>$${precioTotal.toLocaleString()}</td>
                 <td>
-                    <button class="btn btn-info btn-sm me-1" onclick="downloadRemisionPDF('${remision.id}')">Descargar PDF</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteRemision('${remision.id}')">Eliminar</button>
+                    <button class="btn btn-warning btn-sm" onclick="downloadRemisionPDF('${remision.id}')" title="Ver/Descargar PDF" style="display: block; width: 100%; margin-bottom: 0.25rem;">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRemision('${remision.id}')" title="Eliminar" style="display: block; width: 100%;">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
                 </td>
             `;
             remisionesList.appendChild(row);
@@ -4366,29 +6586,41 @@ function renderRemisionesList(filteredRemisiones = remisiones) {
             serviceCard.innerHTML = `
                 <div class="service-card-header">
                     <span class="service-card-id">#${remision.id}</span>
-                    <span class="service-card-status">$${remision.precio.toLocaleString()}</span>
+                    <span class="service-card-status">$${precioTotal.toLocaleString()}</span>
                 </div>
                 <div class="service-card-info">
                     <div class="service-card-info-item">
-                        <span class="service-card-info-label">Fecha:</span>
-                        <span class="service-card-info-value">${remision.fecha}</span>
+                        <span class="service-card-info-label">Fecha Remisión:</span>
+                        <span class="service-card-info-value">${fechaRemision}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">Hora Remisión:</span>
+                        <span class="service-card-info-value">${horaRemision}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">ID Servicio:</span>
+                        <span class="service-card-info-value">${remision.serviceId || '-'}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">Fecha Servicio:</span>
+                        <span class="service-card-info-value">${fechaServicio || '-'}</span>
                     </div>
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Cliente:</span>
-                        <span class="service-card-info-value">${remision.cliente}</span>
-                    </div>
-                    <div class="service-card-info-item">
-                        <span class="service-card-info-label">Tipo Servicio:</span>
-                        <span class="service-card-info-value">${remision.tipoServicio}</span>
+                        <span class="service-card-info-value">${remision.cliente || '-'}</span>
                     </div>
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Técnico:</span>
-                        <span class="service-card-info-value">${getTechnicianNameById(remision.tecnicoId)}</span>
+                        <span class="service-card-info-value">${getTechnicianNameById(remision.tecnicoId) || '-'}</span>
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-info btn-sm" onclick="downloadRemisionPDF('${remision.id}')">PDF</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteRemision('${remision.id}')">Eliminar</button>
+                    <button class="btn btn-primary btn-sm me-1" onclick="downloadRemisionPDF('${remision.id}')">
+                        <i class="bi bi-person"></i> Ver
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRemision('${remision.id}')">
+                        <i class="bi bi-trash-fill"></i> Eliminar
+                    </button>
                 </div>
             `;
             remisionesCards.appendChild(serviceCard);
@@ -4509,79 +6741,49 @@ function setupRemisionServiceSearch() {
 }
 
 function createRemisionFromService(serviceId) {
-    console.log('🔄 Creando remisión para servicio ID:', serviceId);
-    
-    try {
-        // Verificar que services esté cargado
-        if (!services || !Array.isArray(services)) {
-            console.error('❌ services no está disponible o no es un array');
-            showAlert('Error: Datos de servicios no disponibles');
-            return;
-        }
-        
-        const service = services.find(s => s.id === serviceId);
-        console.log('🔍 Servicio encontrado:', service);
-        
-        if (!service) {
-            console.error('❌ Servicio no encontrado con ID:', serviceId);
-            showAlert('Servicio no encontrado');
-            return;
-        }
-
-        // Buscar el precio del servicio
-        const costoServicio = costoServicios.find(cs => cs.codigo === service.serviceCode);
-        const precio = costoServicio ? costoServicio.precio : 0;
-        console.log('💰 Precio encontrado:', precio);
-
-        const remision = {
-            id: generateRemisionId(),
-            fecha: service.date,
-            codigoServicio: service.serviceCode || '',
-            tipoServicio: service.safeType,
-            descripcion: service.description || '',
-            ubicacion: service.location,
-            tecnicoId: service.technicianId,
-            cliente: service.clientName,
-            telefonoCliente: service.clientPhone,
-            horaInicio: service.startTime || '',
-            horaFinalizacion: service.finalizationOrCancellationTime || '',
-            firmaTecnico: service.technicianSignature || '',
-            firmaCliente: service.clientSignature || '',
-            precio: precio,
-            serviceId: serviceId
-        };
-
-        console.log('📝 Remisión creada:', remision);
-
-        // Verificar que remisiones sea un array
-        if (!Array.isArray(remisiones)) {
-            console.error('❌ remisiones no es un array, inicializando...');
-            remisiones = [];
-        }
-
-        remisiones.push(remision);
-        console.log('✅ Remisión agregada al array, total:', remisiones.length);
-        
-        saveRemisiones();
-        console.log('✅ Remisión guardada en localStorage');
-        
-        // Forzar la actualización de la vista de remisiones
-        console.log('🔄 Actualizando vista de remisiones...');
-        renderRemisionesList();
-        console.log('✅ Lista de remisiones actualizada');
-        
-        // Actualizar también la vista de servicios si es necesario
-        if (currentUser.role === 'admin') {
-            renderAdminServicesList(services, 1);
-        }
-        
-        showAlert('✅ Remisión generada exitosamente');
-        
-    } catch (error) {
-        console.error('❌ Error al crear remisión:', error);
-        console.error('🔍 Detalles del error:', error.message, error.stack);
-        showAlert('❌ Error al generar la remisión. Por favor, intente nuevamente.');
+    const service = services.find(s => s.id === serviceId);
+    if (!service) {
+        showAlert('Servicio no encontrado');
+        return;
     }
+
+    // Buscar el precio del servicio
+    const costoServicio = costoServicios.find(cs => cs.codigo === service.serviceCode);
+    const precio = costoServicio ? costoServicio.precio : 0;
+
+    // Obtener fecha y hora actual para la remisión
+    const now = new Date();
+    const fechaRemision = now.toISOString().split('T')[0];
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const ampm = now.getHours() >= 12 ? 'p. m.' : 'a. m.';
+    const hours12 = now.getHours() % 12 || 12;
+    const horaRemision = `${hours12}:${minutes}:${seconds} ${ampm}`;
+
+    const remision = {
+        id: generateRemisionId(),
+        fecha: service.date,
+        fechaRemision: fechaRemision,
+        horaRemision: horaRemision,
+        codigoServicio: service.serviceCode || '',
+        tipoServicio: service.safeType,
+        descripcion: service.description || '',
+        ubicacion: service.location,
+        tecnicoId: service.technicianId,
+        cliente: service.clientName,
+        telefonoCliente: service.clientPhone,
+        horaInicio: service.startTime || '',
+        horaFinalizacion: service.finalizationOrCancellationTime || '',
+        firmaTecnico: service.technicianSignature || '',
+        firmaCliente: service.clientSignature || '',
+        precio: precio,
+        serviceId: serviceId
+    };
+
+    remisiones.push(remision);
+    saveRemisiones();
+    renderRemisionesList();
 }
 
 function deleteRemision(id) {
@@ -4615,26 +6817,51 @@ function exportRemisionesToExcel() {
 
 function filterRemisiones() {
     const searchTerm = document.getElementById('search-remisiones').value.toLowerCase();
-    const dateFrom = document.getElementById('filter-remision-date-from').value;
-    const dateTo = document.getElementById('filter-remision-date-to').value;
+    const dateFromInput = document.getElementById('filter-remision-date-from');
+    const dateToInput = document.getElementById('filter-remision-date-to');
+    
+    // Obtener valores y convertir formato de fecha si es necesario
+    let dateFrom = dateFromInput.value;
+    let dateTo = dateToInput.value;
+    
+    // Convertir formato dd/mm/aaaa a aaaa-mm-dd si es necesario
+    if (dateFrom && dateFrom.includes('/')) {
+        const parts = dateFrom.split('/');
+        if (parts.length === 3) {
+            dateFrom = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+    }
+    if (dateTo && dateTo.includes('/')) {
+        const parts = dateTo.split('/');
+        if (parts.length === 3) {
+            dateTo = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+    }
 
     let filteredRemisiones = remisiones;
 
     if (searchTerm) {
         filteredRemisiones = filteredRemisiones.filter(remision => {
+            const serviceId = remision.serviceId || '';
             return remision.id.toLowerCase().includes(searchTerm) ||
                    remision.codigoServicio.toLowerCase().includes(searchTerm) ||
                    remision.cliente.toLowerCase().includes(searchTerm) ||
-                   remision.tipoServicio.toLowerCase().includes(searchTerm);
+                   serviceId.toLowerCase().includes(searchTerm);
         });
     }
 
     if (dateFrom) {
-        filteredRemisiones = filteredRemisiones.filter(remision => remision.fecha >= dateFrom);
+        filteredRemisiones = filteredRemisiones.filter(remision => {
+            const fechaRemision = remision.fechaRemision || remision.fecha || '';
+            return fechaRemision >= dateFrom;
+        });
     }
 
     if (dateTo) {
-        filteredRemisiones = filteredRemisiones.filter(remision => remision.fecha <= dateTo);
+        filteredRemisiones = filteredRemisiones.filter(remision => {
+            const fechaRemision = remision.fechaRemision || remision.fecha || '';
+            return fechaRemision <= dateTo;
+        });
     }
 
     renderRemisionesList(filteredRemisiones);
@@ -4644,7 +6871,227 @@ function clearRemisionesFilters() {
     document.getElementById('search-remisiones').value = '';
     document.getElementById('filter-remision-date-from').value = '';
     document.getElementById('filter-remision-date-to').value = '';
-    renderRemisionesList();
+    filterRemisiones();
+}
+
+function openDeleteRemisionesModal() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteRemisionesModal'));
+    const deleteRemisionesList = document.getElementById('delete-remisiones-list');
+    const searchInput = document.getElementById('search-delete-remisiones');
+    if (searchInput) searchInput.value = '';
+    deleteRemisionesList.innerHTML = '';
+    
+    // Mostrar todas las remisiones con checkboxes
+    remisiones.forEach(remision => {
+        const service = remision.serviceId ? services.find(s => s.id === remision.serviceId) : null;
+        
+        // Formatear fecha de remisión
+        let fechaRemision = remision.fechaRemision || remision.fecha || '';
+        if (fechaRemision && fechaRemision.includes('-')) {
+            const [year, month, day] = fechaRemision.split('-');
+            fechaRemision = `${day}/${month}/${year}`;
+        }
+        
+        const remisionCard = document.createElement('div');
+        remisionCard.className = 'card mb-2';
+        remisionCard.style.border = '1px solid #dee2e6';
+        remisionCard.innerHTML = `
+            <div class="card-body d-flex align-items-center">
+                <input type="checkbox" class="form-check-input me-3" value="${remision.id}" id="remision-checkbox-${remision.id}" style="width: 20px; height: 20px;">
+                <div class="flex-grow-1">
+                    <strong>ID: ${remision.id}</strong>
+                    <div class="text-muted">Cliente: ${remision.cliente || 'N/A'}</div>
+                    <div class="text-muted">Fecha Remisión: ${fechaRemision || 'N/A'}</div>
+                    <div class="text-muted">Código Servicio: ${remision.codigoServicio || 'N/A'}</div>
+                    <div class="text-muted">Precio: $${(remision.precio || 0).toLocaleString()}</div>
+                </div>
+            </div>
+        `;
+        deleteRemisionesList.appendChild(remisionCard);
+    });
+    
+    modal.show();
+}
+
+function selectAllRemisiones() {
+    const checkboxes = document.querySelectorAll('#delete-remisiones-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+function deselectAllRemisiones() {
+    const checkboxes = document.querySelectorAll('#delete-remisiones-list input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+function confirmDeleteRemisiones() {
+    const checkboxes = document.querySelectorAll('#delete-remisiones-list input[type="checkbox"]:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        showAlert('Por favor, selecciona al menos una remisión para eliminar.');
+        return;
+    }
+    
+    showConfirm(`¿Estás seguro de que quieres eliminar ${selectedIds.length} remisión(es)? Esta acción no se puede deshacer.`, (result) => {
+        if (result) {
+            // Cerrar modal de selección
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteRemisionesModal'));
+            modal.hide();
+            
+            // Inicializar modal de progreso
+            initProgressModal('delete', selectedIds.length);
+            
+            let processed = 0;
+            let successes = 0;
+            let errors = 0;
+            
+            // Función para eliminar cada remisión de forma asíncrona
+            function deleteRemision(index) {
+                if (index >= selectedIds.length) {
+                    // Eliminación completada
+                    saveRemisiones();
+                    renderRemisionesList();
+                    
+                    completeProgress('delete', successes, 
+                        `Eliminación completada. ${successes} registro(s) eliminado(s).`, 
+                        successes, 0, errors);
+                    return;
+                }
+                
+                const remisionId = selectedIds[index];
+                const initialLength = remisiones.length;
+                remisiones = remisiones.filter(r => r.id !== remisionId);
+                
+                if (remisiones.length < initialLength) {
+                    successes++;
+                } else {
+                    errors++;
+                }
+                
+                processed++;
+                updateProgress(processed, selectedIds.length, 
+                    `Eliminando registro ${processed} de ${selectedIds.length}...`, 
+                    successes, 0, errors);
+                
+                // Procesar siguiente remisión con pequeño delay
+                setTimeout(() => deleteRemision(index + 1), 10);
+            }
+            
+            // Iniciar eliminación
+            deleteRemision(0);
+        }
+    });
+}
+
+// ===== FUNCIONES DE BÚSQUEDA PARA MODALES DE ELIMINACIÓN MASIVA =====
+
+// Función para filtrar usuarios en el modal de eliminación
+function filterDeleteUsers() {
+    const searchTerm = document.getElementById('search-delete-users').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#delete-users-list .card');
+    
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Función para limpiar la búsqueda de usuarios
+function clearDeleteUsersSearch() {
+    document.getElementById('search-delete-users').value = '';
+    filterDeleteUsers();
+}
+
+// Función para filtrar clientes en el modal de eliminación
+function filterDeleteClients() {
+    const searchTerm = document.getElementById('search-delete-clients').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#delete-clients-list .card');
+    
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Función para limpiar la búsqueda de clientes
+function clearDeleteClientsSearch() {
+    document.getElementById('search-delete-clients').value = '';
+    filterDeleteClients();
+}
+
+// Función para filtrar servicios en el modal de eliminación
+function filterDeleteServices() {
+    const searchTerm = document.getElementById('search-delete-services').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#delete-services-list .card');
+    
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Función para limpiar la búsqueda de servicios
+function clearDeleteServicesSearch() {
+    document.getElementById('search-delete-services').value = '';
+    filterDeleteServices();
+}
+
+// Función para filtrar costos de servicios en el modal de eliminación
+function filterDeleteCostoServicios() {
+    const searchTerm = document.getElementById('search-delete-costo-servicios').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#delete-costo-servicios-list .card');
+    
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Función para limpiar la búsqueda de costos de servicios
+function clearDeleteCostoServiciosSearch() {
+    document.getElementById('search-delete-costo-servicios').value = '';
+    filterDeleteCostoServicios();
+}
+
+// Función para filtrar remisiones en el modal de eliminación
+function filterDeleteRemisiones() {
+    const searchTerm = document.getElementById('search-delete-remisiones').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#delete-remisiones-list .card');
+    
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// Función para limpiar la búsqueda de remisiones
+function clearDeleteRemisionesSearch() {
+    document.getElementById('search-delete-remisiones').value = '';
+    filterDeleteRemisiones();
 }
 
 // Función para formatear hora en formato HH:MM:SS
@@ -4661,7 +7108,6 @@ function formatTime(timeString) {
         
         return `${hours}:${minutes}:${seconds}`;
     } catch (error) {
-        console.error('Error al formatear hora:', error);
         return 'N/A';
     }
 }
@@ -4673,6 +7119,9 @@ function downloadRemisionPDF(remisionId) {
         return;
     }
 
+    // Recargar servicios desde localStorage para asegurar que tenemos los datos más actualizados
+    services = JSON.parse(localStorage.getItem('services')) || [];
+    
     // Crear el PDF usando jsPDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -4680,25 +7129,17 @@ function downloadRemisionPDF(remisionId) {
     // Configurar fuente y tamaño
     doc.setFont('helvetica');
     
-    // Función para cargar el logo de CONSEGUR desde assets
-    function loadConsegurLogo() {
-        console.log('🖼️ Cargando logo de CONSEGUR desde assets...');
-        
-        // URL del logo de CONSEGUR
+    // Función para cargar el logo de manera más robusta
+    function loadLogoAndGeneratePDF() {
+        // URL del logo local de Consegur
         const logoUrl = 'assets/logoconsegur.png';
         
-        // Crear imagen para cargar el logo
+        // Método principal: carga directa con Image + Canvas
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         
         img.onload = () => {
             try {
-                console.log('✅ Logo de CONSEGUR cargado correctamente:', {
-                    width: img.width,
-                    height: img.height,
-                    naturalWidth: img.naturalWidth,
-                    naturalHeight: img.naturalHeight
-                });
-                
                 // Crear canvas para convertir a base64
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
@@ -4707,8 +7148,6 @@ function downloadRemisionPDF(remisionId) {
                 ctx.drawImage(img, 0, 0);
                 
                 const logoBase64 = canvas.toDataURL('image/png');
-                console.log('✅ Base64 generado del logo de CONSEGUR');
-                
                 // Calcular dimensiones optimizadas para el PDF
                 const maxWidth = 60; // Ancho máximo en mm
                 const maxHeight = 30; // Alto máximo en mm
@@ -4722,154 +7161,453 @@ function downloadRemisionPDF(remisionId) {
                     logoWidth = (img.width * logoHeight) / img.height;
                 }
                 
-                // Posición alineada horizontalmente con IVA RÉGIMEN COMÚN y CLL 7 # 50-71
-                const logoX = 50; // Más a la izquierda
-                const logoY = 30; // Subido aún más arriba
+                // Posición en la parte superior derecha (más a la izquierda y un poco hacia abajo)
+                const logoX = 90; // Movido un poco a la derecha
+                const logoY = 20; // Movido un poco hacia abajo
                 
-                // Agregar el logo al PDF
                 doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
-                console.log('✅ Logo de CONSEGUR agregado exitosamente al PDF:', {
-                    position: { x: logoX, y: logoY },
-                    size: { width: logoWidth, height: logoHeight },
-                    originalSize: { width: img.width, height: img.height }
-                });
+                // Agregar texto "SEGURIDAD & CONFIANZA" debajo del logo
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'normal');
+                doc.text('SEGURIDAD & CONFIANZA', logoX + logoWidth / 2, logoY + logoHeight + 5, { align: 'center' });
                 
-                // Continuar con el resto del contenido del PDF
+                // Continuar con el resto del PDF
                 generatePDFContent(doc, remision);
-                
             } catch (e) {
-                console.error('❌ Error al procesar logo de CONSEGUR:', e);
-                console.log('⚠️ Continuando sin logo...');
                 generatePDFContent(doc, remision);
             }
         };
         
         img.onerror = () => {
-            console.error('❌ Error al cargar logo de CONSEGUR desde:', logoUrl);
-            console.log('⚠️ Continuando sin logo...');
-            generatePDFContent(doc, remision);
+            // Método alternativo: fetch desde la URL local
+            fetch(logoUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status} - ${response.statusText}`);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const base64 = reader.result;
+                            resolve(base64);
+                        };
+                        reader.onerror = () => reject(new Error('Error al leer el archivo del logo local'));
+                        reader.readAsDataURL(blob);
+                    });
+                })
+                .then(logoBase64 => {
+                    return new Promise((resolve, reject) => {
+                        const img2 = new Image();
+                        img2.onload = () => {
+                            resolve({ img: img2, logoBase64 });
+                        };
+                        img2.onerror = () => reject(new Error('Error al cargar imagen desde base64'));
+                        img2.src = logoBase64;
+                    });
+                })
+                .then(({ img: img2, logoBase64 }) => {
+                    try {
+                        const logoWidth = 60;
+                        const logoHeight = (img2.height * logoWidth) / img2.width;
+                        
+                        // Posición en la parte superior derecha (más a la izquierda y un poco hacia abajo)
+                        const logoX = 90; // Movido un poco a la derecha
+                        const logoY = 20; // Movido un poco hacia abajo
+                        doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
+                        // Agregar texto "SEGURIDAD & CONFIANZA" debajo del logo
+                        doc.setFontSize(7);
+                        doc.setFont('helvetica', 'normal');
+                        doc.text('SEGURIDAD & CONFIANZA', logoX + logoWidth / 2, logoY + logoHeight + 5, { align: 'center' });
+                        
+                        generatePDFContent(doc, remision);
+                                    } catch (e) {
+                    generatePDFContent(doc, remision);
+                }
+                })
+                .catch(error => {
+                    loadLogoEmbedded();
+                });
         };
         
-        // Cargar la imagen desde la URL
+        // Intentar cargar la imagen desde la URL oficial
         img.src = logoUrl;
     }
     
-    // Iniciar la carga del logo
-    loadConsegurLogo();
+    // Intentar cargar el logo desde el archivo primero
+    loadLogoAndGeneratePDF();
+    
+    // Función para cargar SOLO el logo local de Consegur embebido (como último recurso)
+    function loadLogoEmbedded() {
+        // Logo real de Consegur embebido en base64 (convertido desde la URL oficial)
+        const logoBase64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF0WlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNy4yLWMwMDAgNzkuMWI2NWE3OWI0LCAyMDIyLzA2LzEzLTIyOjAxOjAxICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIiB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjQuMCAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjQtMDEtMjBUMTU6NDc6NDctMDU6MDAiIHhtcDpNZXRhZGF0YURhdGU9IjIwMjQtMDEtMjBUMTU6NDc6NDctMDU6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDI0LTAxLTIwVDE1OjQ3OjQ3LTA1OjAwIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjY5ZDM4YmM1LTM4ZTAtNDI0Ny1hMzBkLTNmOWNhYzM3NzM0YyIgeG1wTU06RG9jdW1lbnRJRD0iYWRvYmU6ZG9jaWQ6cGhvdG9zaG9wOjIyYzRkOTZiLTM4ZTAtNDI0Ny1hMzBkLTNmOWNhYzM3NzM0YyIgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOjY5ZDM4YmM1LTM4ZTAtNDI0Ny1hMzBkLTNmOWNhYzM3NzM0YyIgZGM6Zm9ybWF0PSJpbWFnZS9wbmciIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiPiA8eG1wTU06SGlzdG9yeT4gPHJkZjpTZXE+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJjcmVhdGVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjY5ZDM4YmM1LTM4ZTAtNDI0Ny1hMzBkLTNmOWNhYzM3NzM0YyIgc3RFdnQ6d2hlbj0iMjAyNC0wMS0yMFQxNTo0Nzo0Ny0wNTowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIDI0LjAgKE1hY2ludG9zaCkiLz4gPC9yZGY6U2VxPiA8L3htcE1NOkhpc3Rvcnk+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+';
+        
+        try {
+            // Crear imagen para cargar el logo embebido
+            const img = new Image();
+            
+            img.onload = () => {
+                try {
+                    // Calcular dimensiones optimizadas para el PDF
+                    const maxWidth = 60; // Ancho máximo en mm
+                    const maxHeight = 30; // Alto máximo en mm
+                    
+                    let logoWidth = maxWidth;
+                    let logoHeight = (img.height * logoWidth) / img.width;
+                    
+                    // Si la altura es muy grande, ajustar proporcionalmente
+                    if (logoHeight > maxHeight) {
+                        logoHeight = maxHeight;
+                        logoWidth = (img.width * logoHeight) / img.height;
+                    }
+                    
+                    // Posición en la parte superior derecha (más a la izquierda y un poco hacia abajo)
+                    const logoX = 90; // Movido un poco a la derecha
+                    const logoY = 20; // Movido un poco hacia abajo
+                    
+                    doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
+                    
+                    // Agregar texto "SEGURIDAD & CONFIANZA" debajo del logo
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('SEGURIDAD & CONFIANZA', logoX + logoWidth / 2, logoY + logoHeight + 5, { align: 'center' });
+                    generatePDFContent(doc, remision);
+                } catch (e) {
+                    generatePDFContent(doc, remision);
+                }
+            };
+            
+            img.onerror = () => {
+                generatePDFContent(doc, remision);
+            };
+            
+            // Cargar la imagen desde el base64 embebido
+            img.src = logoBase64;
+            
+        } catch (e) {
+            generatePDFContent(doc, remision);
+        }
+    }
 }
 
 function generatePDFContent(doc, remision) {
+    // Recargar servicios y costos de servicios desde localStorage para asegurar datos actualizados
+    services = JSON.parse(localStorage.getItem('services')) || [];
+    costoServicios = JSON.parse(localStorage.getItem('costoServicios')) || [];
     
-    // Información de la empresa en la parte superior derecha
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold'); // Negrilla para CONSEGUR S.A.S.
-    doc.text('CONSEGUR S.A.S.', 150, 30);
-    doc.setFont('helvetica', 'normal'); // Volver a normal
+    // Obtener el servicio asociado
+    const service = remision.serviceId ? services.find(s => s.id === remision.serviceId) : null;
+    
+    // Información de la empresa en la parte superior izquierda
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CONSEGUR S.A.S.', 20, 20);
     doc.setFontSize(8);
-    doc.text('NIT: 900514502-7', 150, 36);
-    doc.text('IVA RÉGIMEN COMÚN', 150, 42);
-    doc.text('CLL 7 # 50-71', 150, 48);
-    doc.text('TELÉFONO 448 86 00', 150, 54);
-    doc.text('MEDELLÍN ANTIOQUIA', 150, 60);
+    doc.setFont('helvetica', 'normal');
+    doc.text('NIT: 900514502-7', 20, 26);
+    doc.text('IVA RÉGIMEN COMÚN', 20, 32);
+    doc.text('CLL 7 # 50-71', 20, 38);
+    doc.text('TELÉFONO 448 86 00', 20, 44);
+    doc.text('MEDELLÍN ANTIOQUIA', 20, 50);
     
-    // Título del documento centrado
+    // Logo a la derecha (ya está agregado en la función loadLogoEmbedded)
+    // El logo se posiciona en 20, 15 con dimensiones ajustadas
+    
+    // Título del documento centrado (reducido espacio arriba)
     doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold'); // Negrilla para REMISIÓN DE SERVICIO
-    doc.text('REMISIÓN DE SERVICIO', 105, 80, { align: 'center' });
-    doc.setFont('helvetica', 'normal'); // Volver a normal
+    doc.setFont('helvetica', 'bold');
+    doc.text('REMISIÓN DE SERVICIO', 105, 65, { align: 'center' });
     
-    // Línea separadora
-    doc.line(20, 85, 190, 85);
+    // Línea separadora debajo del título
+    doc.line(20, 70, 190, 70);
     
     // Información de la remisión organizada en dos columnas
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     
-    // Columna izquierda
-    doc.text('ID Remisión:', 20, 100);
-    doc.text(remision.id, 50, 100);
+    let yPos = 85; // Ajustado porque el título está más arriba
     
-    doc.text('Fecha:', 20, 110);
-    doc.text(remision.fecha, 50, 110);
+    // Columna izquierda - Información del servicio
+    doc.text('ID Remisión:', 20, yPos);
+    doc.text(remision.id || 'N/A', 60, yPos);
+    yPos += 10;
     
-    doc.text('Código Servicio:', 20, 120);
-    doc.text(remision.codigoServicio, 50, 120);
+    doc.text('ID Servicio:', 20, yPos);
+    doc.text(remision.serviceId || 'N/A', 60, yPos);
+    yPos += 10;
     
-    doc.text('Tipo Servicio:', 20, 130);
-    doc.text(remision.tipoServicio, 50, 130);
-    
-    doc.text('Descripción:', 20, 140);
-    // Dividir descripción en múltiples líneas si es muy larga
-    const descLines = doc.splitTextToSize(remision.descripcion, 60);
-    doc.text(descLines, 50, 140);
-    
-    // Precio en negrilla, más grande y centrado
-    doc.setFont('helvetica', 'bold'); // Negrilla para Precio
-    doc.setFontSize(14); // Más grande
-    doc.text(`Precio: $${remision.precio.toLocaleString()}`, 105, 160, { align: 'center' }); // Todo en una línea centrado
-    doc.setFont('helvetica', 'normal'); // Volver a normal
-    doc.setFontSize(10); // Volver al tamaño normal
-    
-    // Columna derecha
-    doc.text('Cliente:', 120, 100);
-    doc.text(remision.cliente, 150, 100);
-    
-    doc.text('Teléfono:', 120, 110);
-    doc.text(remision.telefonoCliente, 150, 110);
-    
-    doc.text('Hora Inicio:', 120, 120);
-    doc.text(formatTime(remision.horaInicio), 150, 120);
-    
-    doc.text('Hora Finalización:', 120, 130);
-    doc.text(formatTime(remision.horaFinalizacion), 150, 130);
-    
-    doc.text('Ubicación:', 120, 140);
-    const ubicLines = doc.splitTextToSize(remision.ubicacion, 60);
-    doc.text(ubicLines, 150, 140);
-    
-    // Línea separadora antes de las firmas
-    doc.line(20, 180, 190, 180);
-    
-    // Sección de firmas
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold'); // Negrilla para FIRMAS
-    doc.text('FIRMAS:', 20, 195);
-    doc.setFont('helvetica', 'normal'); // Volver a normal
-    
-    // Firma del técnico
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold'); // Negrilla para Firma Técnico
-    doc.text('Firma Técnico:', 20, 210);
-    doc.setFont('helvetica', 'normal'); // Volver a normal
-    doc.rect(20, 215, 50, 15); // Marco para firma aún más pequeño
-    
-    // Agregar firma del técnico si existe
-    if (remision.firmaTecnico) {
-        try {
-            doc.addImage(remision.firmaTecnico, 'PNG', 22, 217, 46, 11); // Firma aún más pequeña
-        } catch (e) {
-            console.log('Error al agregar firma del técnico:', e);
-        }
+    // Formatear fecha de servicio
+    let fechaServicio = service ? service.date : remision.fecha || '';
+    if (fechaServicio && fechaServicio.includes('-')) {
+        fechaServicio = fechaServicio; // Mantener formato YYYY-MM-DD
     }
+    doc.text('Fecha de Servicio:', 20, yPos);
+    doc.text(fechaServicio || 'N/A', 60, yPos);
+    yPos += 10;
     
-    // Firma del cliente
-    doc.setFont('helvetica', 'bold'); // Negrilla para Firma Cliente
-    doc.text('Firma Cliente:', 120, 210);
-    doc.setFont('helvetica', 'normal'); // Volver a normal
-    doc.rect(120, 215, 50, 15); // Marco para firma aún más pequeño
-    
-    // Agregar firma del cliente si existe
-    if (remision.firmaCliente) {
-        try {
-            doc.addImage(remision.firmaCliente, 'PNG', 122, 217, 46, 11); // Firma aún más pequeña
-        } catch (e) {
-            console.log('Error al agregar firma del cliente:', e);
-        }
+    // Hora de servicio
+    let horaServicio = service ? service.startTime : '';
+    if (horaServicio) {
+        const horaDate = new Date(horaServicio);
+        const hours = horaDate.getHours();
+        const minutes = String(horaDate.getMinutes()).padStart(2, '0');
+        const seconds = String(horaDate.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+        const hours12 = hours % 12 || 12;
+        horaServicio = `${hours12}:${minutes}:${seconds} ${ampm}`;
     }
+    doc.text('Hora Servicio:', 20, yPos);
+    doc.text(horaServicio || 'N/A', 60, yPos);
+    yPos += 10;
     
-    // Información adicional en la parte inferior
+    // Total de Servicios - Título con tamaño original
+    doc.text('Total de Servicios:', 20, yPos);
+    yPos += 8;
+    
+    // Reducir tamaño de fuente solo para el contenido del servicio
     doc.setFontSize(8);
-    doc.text('Este documento es una remisión oficial de CONSEGUR S.A.S.', 105, 250, { align: 'center' });
-    doc.text('Para cualquier consulta comunicarse al teléfono 448 86 00', 105, 255, { align: 'center' });
+    
+    // Obtener información del servicio principal
+    const codigoServicio = remision.codigoServicio || service?.serviceCode || 'N/A';
+    const tipoServicio = remision.tipoServicio || service?.safeType || 'N/A';
+    
+    // Obtener cantidad del servicio (si no existe, usar 1)
+    const cantidad = service?.quantity || 1;
+    
+    // Buscar el precio unitario en costoServicios usando el código del servicio
+    const costoServicio = costoServicios.find(cs => cs.codigo === codigoServicio);
+    const precioUnitario = costoServicio ? costoServicio.precio : 0;
+    
+    // Calcular el total del servicio principal (cantidad * precio unitario)
+    let totalServicio = cantidad * precioUnitario;
+    
+    // Formatear el texto del servicio con salto de línea si es necesario
+    // Ancho máximo de 120mm para permitir que el texto se divida correctamente
+    const servicioTexto = `${codigoServicio} - ${tipoServicio}`;
+    const servicioLines = doc.splitTextToSize(servicioTexto, 120);
+    
+    // Mostrar el servicio principal en formato: 1. CODIGO - TIPO
+    doc.text(`1. ${servicioLines[0]}`, 20, yPos);
+    yPos += 5;
+    
+    // Si hay más líneas (texto largo), mostrarlas con indentación
+    if (servicioLines.length > 1) {
+        for (let i = 1; i < servicioLines.length; i++) {
+            doc.text(servicioLines[i], 20, yPos);
+            yPos += 5;
+        }
+    }
+    
+    // Mostrar cantidad, precio unitario y total en la misma línea
+    doc.text(`x${cantidad} * $${precioUnitario.toLocaleString()} = $${totalServicio.toLocaleString()}`, 20, yPos);
+    yPos += 8;
+    
+    // Mostrar servicios adicionales si existen
+    if (service?.additionalServices && Array.isArray(service.additionalServices) && service.additionalServices.length > 0) {
+        service.additionalServices.forEach((additionalService, index) => {
+            // Los servicios adicionales se guardan con: code, type, description, quantity
+            // Pero también pueden tener: serviceCode, safeType (para compatibilidad)
+            const codigoAdicional = additionalService.code || additionalService.serviceCode || 'N/A';
+            const tipoAdicional = additionalService.type || additionalService.safeType || 'N/A';
+            const cantidadAdicional = additionalService.quantity || 1;
+            const costoServicioAdicional = costoServicios.find(cs => cs.codigo === codigoAdicional);
+            const precioUnitarioAdicional = costoServicioAdicional ? costoServicioAdicional.precio : 0;
+            const totalAdicional = cantidadAdicional * precioUnitarioAdicional;
+            totalServicio += totalAdicional;
+            
+            const servicioAdicionalTexto = `${codigoAdicional} - ${tipoAdicional}`;
+            const servicioAdicionalLines = doc.splitTextToSize(servicioAdicionalTexto, 120);
+            
+            doc.text(`${index + 2}. ${servicioAdicionalLines[0]}`, 20, yPos);
+            yPos += 5;
+            
+            if (servicioAdicionalLines.length > 1) {
+                for (let i = 1; i < servicioAdicionalLines.length; i++) {
+                    doc.text(servicioAdicionalLines[i], 20, yPos);
+                    yPos += 5;
+                }
+            }
+            
+            doc.text(`x${cantidadAdicional} * $${precioUnitarioAdicional.toLocaleString()} = $${totalAdicional.toLocaleString()}`, 20, yPos);
+            yPos += 8;
+        });
+    }
+    
+    // Restaurar tamaño de fuente original
+    doc.setFontSize(10);
+    
+    // Columna derecha - Información del cliente y tiempos (alineada con la izquierda)
+    let yPosRight = 85; // Mismo punto de inicio que la columna izquierda
+    
+    doc.text('Cliente:', 120, yPosRight);
+    doc.text(remision.cliente || service?.clientName || 'N/A', 150, yPosRight);
+    yPosRight += 10;
+    
+    doc.text('Teléfono:', 120, yPosRight);
+    doc.text(remision.telefonoCliente || service?.clientPhone || 'N/A', 150, yPosRight);
+    yPosRight += 10;
+    
+    doc.text('Email:', 120, yPosRight);
+    // Obtener el email del cliente usando la función helper
+    const clientEmail = remision.cliente ? getClientEmailByName(remision.cliente) : (service?.clientName ? getClientEmailByName(service.clientName) : 'N/A');
+    doc.text(clientEmail !== '-' ? clientEmail : 'N/A', 150, yPosRight);
+    yPosRight += 10;
+    
+    // Hora Inicio
+    let horaInicio = service?.startTime || '';
+    if (horaInicio) {
+        const inicioDate = new Date(horaInicio);
+        const hours = inicioDate.getHours();
+        const minutes = String(inicioDate.getMinutes()).padStart(2, '0');
+        const seconds = String(inicioDate.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+        const hours12 = hours % 12 || 12;
+        horaInicio = `${hours12}:${minutes}:${seconds} ${ampm}`;
+    }
+    doc.text('Hora Inicio:', 120, yPosRight);
+    doc.text(horaInicio || 'N/A', 150, yPosRight);
+    yPosRight += 10;
+    
+    // Hora Finalización
+    let horaFinalizacion = service?.finalizationOrCancellationTime || '';
+    if (horaFinalizacion) {
+        const finDate = new Date(horaFinalizacion);
+        const hours = finDate.getHours();
+        const minutes = String(finDate.getMinutes()).padStart(2, '0');
+        const seconds = String(finDate.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'p. m.' : 'a. m.';
+        const hours12 = hours % 12 || 12;
+        horaFinalizacion = `${hours12}:${minutes}:${seconds} ${ampm}`;
+    }
+    doc.text('Hora Finalización:', 120, yPosRight);
+    doc.text(horaFinalizacion || 'N/A', 150, yPosRight);
+    yPosRight += 10;
+    
+    // Ubicación Inicio
+    if (service?.startLocation) {
+        doc.text('Ubicación Inicio:', 120, yPosRight);
+        doc.text(`Lat: ${service.startLocation.latitude.toFixed(6)}, Lng: ${service.startLocation.longitude.toFixed(6)}`, 150, yPosRight);
+        yPosRight += 10;
+    }
+    
+    // Ubicación Fin
+    if (service?.finalizationOrCancellationLocation) {
+        doc.text('Ubicación Fin:', 120, yPosRight);
+        doc.text(`Lat: ${service.finalizationOrCancellationLocation.latitude.toFixed(6)}, Lng: ${service.finalizationOrCancellationLocation.longitude.toFixed(6)}`, 150, yPosRight);
+        yPosRight += 10;
+    }
+    
+    // Ubicación Servicio (movido debajo de Ubicación Fin)
+    const ubicacionServicio = service?.location || remision.ubicacion || 'N/A';
+    doc.text('Ubicación Servicio:', 120, yPosRight);
+    const ubicLines = doc.splitTextToSize(ubicacionServicio, 60);
+    doc.text(ubicLines, 150, yPosRight);
+    
+    // Calcular el total de la remisión (usar el total calculado del servicio)
+    const totalRemision = totalServicio || (remision.precio || 0);
+    
+    // Calcular la posición Y para el total (reducir espacio en blanco)
+    // Usar el máximo entre yPos (columna izquierda) y yPosRight (columna derecha) + un pequeño margen
+    const maxYPos = Math.max(yPos, yPosRight) + 5;
+    
+    // Precio centrado en negrilla (más grande)
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total: $${totalRemision.toLocaleString()}`, 105, maxYPos, { align: 'center' });
+    
+    // Línea separadora después del total (igual que después del título)
+    doc.line(20, maxYPos + 5, 190, maxYPos + 5);
+    
+    // Sección de Fotografía de Evidencia y Firmas
+    const sectionY = maxYPos + 10;
+    const sectionStartY = sectionY + 8; // Espacio después del título
+    
+    // Título de Fotografía de Evidencia
+    doc.setFontSize(10);
+    doc.text('FOTOGRAFÍA DE EVIDENCIA:', 20, sectionY);
+    
+    // Título de Firmas (alineado con Fotografía de Evidencia)
+    doc.text('FIRMAS:', 105, sectionY);
+    
+    // Agregar foto de evidencia si existe
+    if (service?.photo) {
+        try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const photoBase64 = canvas.toDataURL('image/png');
+                    
+                    // Calcular dimensiones para la imagen (reducido - máximo 50mm de ancho)
+                    // Dividir el espacio disponible: mitad izquierda para foto (85mm de ancho disponible)
+                    const maxWidth = 50;
+                    const imgWidth = maxWidth;
+                    const imgHeight = (img.height * imgWidth) / img.width;
+                    
+                    // Agregar foto de evidencia a la izquierda (mitad izquierda del espacio)
+                    doc.addImage(photoBase64, 'PNG', 20, sectionStartY, imgWidth, imgHeight);
+                    
+                    // Texto descriptivo debajo de la imagen si existe
+                    if (service.photoDescription) {
+                        doc.setFontSize(8);
+                        doc.text(service.photoDescription, 20, sectionStartY + imgHeight + 5);
+                    }
+                    
+                    // Continuar con firmas al lado derecho (mitad derecha del espacio)
+                    addSignaturesSection(doc, service, remision, sectionStartY, imgHeight);
+                } catch (e) {
+                    addSignaturesSection(doc, service, remision, sectionStartY, 0);
+                }
+            };
+            img.onerror = () => {
+                addSignaturesSection(doc, service, remision, sectionStartY, 0);
+            };
+            img.src = service.photo;
+        } catch (e) {
+            addSignaturesSection(doc, service, remision, sectionStartY, 0);
+        }
+    } else {
+        addSignaturesSection(doc, service, remision, sectionStartY, 0);
+    }
+}
+
+function addSignaturesSection(doc, service, remision, yStart, photoHeight = 0) {
+    // Sección de firmas - posicionar en la mitad derecha del espacio
+    // El espacio total es ~170mm (190-20), mitad izquierda para foto, mitad derecha para firmas
+    const signaturesX = 105; // Posición X para las firmas (mitad derecha, empezando en 105mm)
+    const signaturesY = yStart; // Posición Y alineada con el inicio de la foto
+    
+    // Firma del técnico (más pequeña)
+    doc.setFontSize(8);
+    doc.text('Firma Técnico:', signaturesX, signaturesY);
+    doc.rect(signaturesX, signaturesY + 3, 60, 20); // Marco para firma (más pequeño)
+    
+    // Agregar firma del técnico si existe (más pequeña)
+    if (service?.technicianSignature) {
+        try {
+            doc.addImage(service.technicianSignature, 'PNG', signaturesX + 2, signaturesY + 5, 56, 16);
+        } catch (e) {
+        }
+    }
+    
+    // Firma del cliente (debajo de la firma del técnico, más pequeña)
+    doc.text('Firma Cliente:', signaturesX, signaturesY + 30);
+    doc.rect(signaturesX, signaturesY + 33, 60, 20); // Marco para firma (más pequeño)
+    
+    // Agregar firma del cliente si existe (más pequeña)
+    if (service?.clientSignature) {
+        try {
+            doc.addImage(service.clientSignature, 'PNG', signaturesX + 2, signaturesY + 35, 56, 16);
+        } catch (e) {
+        }
+    }
     
     // Guardar el PDF
     doc.save(`remision_${remision.id}.pdf`);
@@ -4880,15 +7618,8 @@ function generatePDFContent(doc, remision) {
 // --- Signature Pad Logic ---
 
 function initializeSignaturePads() {
-    console.log('initializeSignaturePads llamado');
-    
     const canvasClient = document.getElementById('signature-pad-client');
     const canvasTechnician = document.getElementById('signature-pad-technician');
-    
-    console.log('Canvas client encontrado:', canvasClient);
-    console.log('Canvas technician encontrado:', canvasTechnician);
-    console.log('SignaturePad disponible:', typeof SignaturePad !== 'undefined');
-
     if (canvasClient && typeof SignaturePad !== 'undefined') {
         try {
             if (signaturePadClient) signaturePadClient.off(); // Detach existing event listeners
@@ -4896,12 +7627,9 @@ function initializeSignaturePads() {
                 backgroundColor: 'rgb(255, 255, 255)'
             });
             resizeCanvas(canvasClient, signaturePadClient);
-            console.log('SignaturePad client inicializado correctamente');
         } catch (error) {
-            console.error('Error al inicializar SignaturePad client:', error);
         }
     } else {
-        console.warn('No se pudo inicializar SignaturePad client - canvas o librería no disponible');
     }
 
     if (canvasTechnician && typeof SignaturePad !== 'undefined') {
@@ -4911,12 +7639,9 @@ function initializeSignaturePads() {
                 backgroundColor: 'rgb(255, 255, 255)'
             });
             resizeCanvas(canvasTechnician, signaturePadTechnician);
-            console.log('SignaturePad technician inicializado correctamente');
         } catch (error) {
-            console.error('Error al inicializar SignaturePad technician:', error);
         }
     } else {
-        console.warn('No se pudo inicializar SignaturePad technician - canvas o librería no disponible');
     }
 }
 
@@ -4976,6 +7701,17 @@ document.addEventListener('DOMContentLoaded', () => {
              // Reset form when modal is closed
             document.getElementById('user-form').reset();
             document.getElementById('edit-user-id').value = '';
+            document.getElementById('user-username').value = '';
+            document.getElementById('user-password').value = '';
+            document.getElementById('user-role').value = 'employee';
+            const passwordInput = document.getElementById('user-password');
+            passwordInput.placeholder = 'Ingrese la contraseña';
+            passwordInput.setAttribute('required', 'required');
+            const passwordError = document.getElementById('password-error');
+            if (passwordError) {
+                passwordError.style.display = 'none';
+                passwordError.textContent = '';
+            }
             document.getElementById('createUserModalLabel').textContent = 'Crear/Editar Usuario';
         });
     }
@@ -4983,6 +7719,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const registerServiceModalElement = document.getElementById('registerServiceModal');
     if (registerServiceModalElement) {
         registerServiceModalElement.addEventListener('shown.bs.modal', () => {
+            // Asegurar que los inputs de fecha y hora siempre sean tipo text
+            const serviceDateInput = document.getElementById('service-date');
+            const serviceTimeInput = document.getElementById('service-time');
+            if (serviceDateInput) {
+                serviceDateInput.type = 'text';
+            }
+            if (serviceTimeInput) {
+                serviceTimeInput.type = 'text';
+            }
+            
             initializeSignaturePads();
             populateTechnicianDropdowns();
 
@@ -5017,14 +7763,33 @@ document.addEventListener('DOMContentLoaded', () => {
             // Resetear el formulario completamente
             document.getElementById('service-form').reset();
             document.getElementById('edit-service-id').value = '';
-            document.getElementById('registerServiceModalLabel').textContent = 'Registrar Servicio Realizado';
+            document.getElementById('service-date').value = '';
+            document.getElementById('service-time').value = '';
+            document.getElementById('service-code').value = '';
+            document.getElementById('service-type').value = '';
+            document.getElementById('service-description').value = '';
+            document.getElementById('service-quantity').value = '1';
+            document.getElementById('service-client-name').value = '';
+            document.getElementById('service-client-nit').value = '';
+            document.getElementById('service-location').value = '';
+            document.getElementById('service-client-phone').value = '';
+            document.getElementById('service-client-email').value = '';
+            document.getElementById('service-status').value = 'Pendiente';
+            document.getElementById('registerServiceModalLabel').textContent = 'Registrar Servicio';
             
             // Limpiar checkboxes de tipo de servicio
             setServiceTypes('');
 
             // Limpiar y ocultar previsualización de foto
+            document.getElementById('service-photo-preview').src = '';
             document.getElementById('service-photo-preview').classList.add('d-none');
             document.getElementById('service-photo').value = '';
+
+            // Limpiar servicios adicionales
+            const additionalServicesContainer = document.getElementById('additional-services-container');
+            if (additionalServicesContainer) {
+                additionalServicesContainer.innerHTML = '';
+            }
 
             // Limpiar y ocultar firmas
             clearSignaturePad('client');
@@ -5032,25 +7797,49 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('photo-evidence-section').classList.add('d-none');
             document.getElementById('client-signature-section').classList.add('d-none');
             document.getElementById('technician-signature-section').classList.add('d-none');
-
-            // Ocultar campo de técnico y restablecer el estado
-            document.getElementById('service-technician-field').classList.add('d-none');
-            document.getElementById('service-status').value = 'Pendiente'; // Restablecer a Pendiente
-
-            // Habilitar campos que se deshabilitaron al finalizar un servicio
-            document.getElementById('service-date').disabled = false;
-            // Habilitar checkboxes de tipo de servicio (si existen)
-            const serviceTypeCajas = document.getElementById('service-type-cajas');
-            const serviceTypeCamaras = document.getElementById('service-type-camaras');
-            const serviceTypePuertas = document.getElementById('service-type-puertas');
             
-            if (serviceTypeCajas) serviceTypeCajas.disabled = false;
-            if (serviceTypeCamaras) serviceTypeCamaras.disabled = false;
-            if (serviceTypePuertas) serviceTypePuertas.disabled = false;
-            document.getElementById('service-location').disabled = false;
-            document.getElementById('service-client-name').disabled = false;
-            document.getElementById('service-client-phone').disabled = false;
-            document.getElementById('service-status').disabled = false;
+            // Limpiar sugerencias
+            const clientNameSuggestions = document.getElementById('client-name-suggestions');
+            if (clientNameSuggestions) {
+                clientNameSuggestions.innerHTML = '';
+                clientNameSuggestions.style.display = 'none';
+            }
+            
+            const serviceCodeSuggestions = document.getElementById('service-code-suggestions');
+            if (serviceCodeSuggestions) {
+                serviceCodeSuggestions.innerHTML = '';
+                serviceCodeSuggestions.style.display = 'none';
+            }
+        });
+    }
+    
+    // Agregar listener para limpiar formulario de cliente cuando se cierre el modal
+    const createClientModalElement = document.getElementById('createClientModal');
+    if (createClientModalElement) {
+        createClientModalElement.addEventListener('hidden.bs.modal', () => {
+            document.getElementById('client-form').reset();
+            document.getElementById('edit-client-id').value = '';
+            document.getElementById('client-name').value = '';
+            document.getElementById('client-nit').value = '';
+            document.getElementById('client-address').value = '';
+            document.getElementById('client-phone').value = '';
+            document.getElementById('client-email').value = '';
+            document.getElementById('client-consecutive').value = '';
+            document.getElementById('createClientModalLabel').textContent = 'Crear/Editar Cliente';
+        });
+    }
+    
+    // Agregar listener para limpiar formulario de costo servicio cuando se cierre el modal
+    const createCostoServicioModalElement = document.getElementById('createCostoServicioModal');
+    if (createCostoServicioModalElement) {
+        createCostoServicioModalElement.addEventListener('hidden.bs.modal', () => {
+            document.getElementById('costo-servicio-form').reset();
+            document.getElementById('edit-costo-servicio-id').value = '';
+            document.getElementById('costo-servicio-codigo').value = '';
+            document.getElementById('costo-servicio-tipo').value = '';
+            document.getElementById('costo-servicio-otro-tipo').value = '';
+            document.getElementById('costo-servicio-descripcion').value = '';
+            document.getElementById('costo-servicio-precio').value = '';
         });
     }
 
@@ -5061,7 +7850,6 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeSignaturePads();
     } else {
         // Fallback or warning if SignaturePad is not loaded
-        console.warn('SignaturePad library not loaded. Signature functionality will be limited.');
     }
 
 
@@ -5107,8 +7895,6 @@ function resizeImage(img, maxWidth, maxHeight) {
 
 
 function testGeolocation() {
-    console.log('🌍 Iniciando test de geolocalización mejorada');
-    
     // Usar la instancia global de geolocalización
     if (!window.globalGeolocation) {
         window.globalGeolocation = new EnhancedGeolocation();
@@ -5133,9 +7919,6 @@ function testGeolocation() {
             message += `🌐 Verificar en Google Maps:\n`;
             message += `https://www.google.com/maps?q=${locationData.latitude},${locationData.longitude}\n\n`;
             message += `🎯 El sistema de geolocalización mejorado está funcionando correctamente y es compatible con tu navegador.`;
-
-            console.log('Test de geolocalización mejorada exitoso:', locationData);
-            
             // Cerrar el modal actual y mostrar el resultado
             const currentModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
             if (currentModal) {
@@ -5144,14 +7927,11 @@ function testGeolocation() {
             
             // Mostrar el resultado después de un breve delay
             setTimeout(() => {
-                console.log('Mostrando resultado de geolocalización mejorada');
                 showAlert(message);
             }, 300);
         },
         (error) => {
             // Error: mostrar mensaje específico
-            console.error('Error en prueba de geolocalización mejorada:', error);
-            
             let errorMessage = `❌ Error en sistema de geolocalización:\n\n`;
             errorMessage += `${error.message}\n\n`;
             errorMessage += `${error.details || ''}\n\n`;
@@ -5186,7 +7966,6 @@ function toggleTheme() {
     
     // Mostrar notificación del cambio de tema
     const themeName = currentTheme === 'dark' ? 'oscuro' : 'claro';
-    //showAlert(`Tema cambiado a modo ${themeName}`);
 }
 
 function applyTheme() {
@@ -5344,7 +8123,12 @@ function filterEmployeeServices(status) {
     const filterButtons = document.querySelectorAll('.employee-filters .btn');
     filterButtons.forEach(btn => {
         btn.classList.remove('active');
-        if (btn.textContent.trim() === status || (status === 'todos' && btn.textContent.trim() === 'Todos')) {
+        const btnText = btn.textContent.trim().toUpperCase();
+        if ((status === 'todos' && btnText.includes('TODOS')) ||
+            (status === 'Pendiente' && btnText.includes('PENDIENTES')) ||
+            (status === 'En proceso' && btnText.includes('EN PROCESO')) ||
+            (status === 'Finalizado' && btnText.includes('FINALIZADOS')) ||
+            (status === 'Cancelado' && btnText.includes('CANCELADOS'))) {
             btn.classList.add('active');
         }
     });
@@ -5443,28 +8227,33 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('import-costo-servicios-file').addEventListener('change', handleCostoServiciosImport);
     
     // Event listener para poblar automáticamente tipo y descripción cuando cambie el código de servicio
-    document.getElementById('service-code').addEventListener('change', loadServiceDetails);
+    // Event listener actualizado para el campo de código de servicio (ahora es input de texto)
+    const serviceCodeField = document.getElementById('service-code');
+    if (serviceCodeField) {
+        serviceCodeField.addEventListener('change', loadServiceDetails);
+        serviceCodeField.addEventListener('blur', loadServiceDetails);
+    }
     
     // Event listener para el formulario de costo de servicios
     document.getElementById('costo-servicio-form').addEventListener('submit', function(e) {
         e.preventDefault();
         
         const editId = document.getElementById('edit-costo-servicio-id').value;
-        const tipo = document.getElementById('costo-servicio-tipo').value;
-        const otroTipo = document.getElementById('costo-servicio-otro-tipo').value;
-        const descripcion = document.getElementById('costo-servicio-descripcion').value;
+        const codigo = document.getElementById('costo-servicio-codigo').value.trim();
+        const tipo = document.getElementById('costo-servicio-tipo').value.trim();
+        const descripcion = document.getElementById('costo-servicio-descripcion').value.trim();
         const precio = parseFloat(document.getElementById('costo-servicio-precio').value);
         
         // Validar campos obligatorios
-        if (!tipo.trim()) {
+        if (!codigo) {
+            showAlert('Por favor ingresa el código de servicio');
+            return;
+        }
+        if (!tipo) {
             showAlert('Por favor ingresa el tipo de servicio');
             return;
         }
-        if (tipo === 'Otro' && !otroTipo.trim()) {
-            showAlert('Por favor especifica el tipo de servicio personalizado');
-            return;
-        }
-        if (!descripcion.trim()) {
+        if (!descripcion) {
             showAlert('Por favor ingresa la descripción del servicio');
             return;
         }
@@ -5473,54 +8262,48 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Determinar el tipo final (usar el personalizado si se seleccionó "Otro")
-        const tipoFinal = tipo === 'Otro' ? otroTipo.trim() : tipo.trim();
-        
         if (editId) {
             // Editar servicio existente
             const index = costoServicios.findIndex(s => s.id === editId);
             if (index !== -1) {
                 costoServicios[index] = {
                     ...costoServicios[index],
-                    tipo: tipoFinal,
-                    descripcion: descripcion.trim(),
+                    codigo: codigo,
+                    tipo: tipo,
+                    descripcion: descripcion,
                     precio: precio
                     // Mantener la fecha existente
                 };
-                console.log('✅ Servicio actualizado:', costoServicios[index]);
             }
         } else {
-            // Crear nuevo servicio con código automático
-            const codigoGenerado = generateCostoServicioCode();
+            // Crear nuevo servicio con código manual
             const fechaActual = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
             const newServicio = {
                 id: generateId(),
-                codigo: codigoGenerado,
+                codigo: codigo,
                 fecha: fechaActual,
-                tipo: tipoFinal,
-                descripcion: descripcion.trim(),
+                tipo: tipo,
+                descripcion: descripcion,
                 precio: precio
             };
             costoServicios.push(newServicio);
-            console.log('✅ Nuevo servicio creado:', newServicio);
         }
         
         saveCostoServicios();
-        renderCostoServiciosList();
+        renderCostoServiciosList(costoServicios, 1);
         populateServiceCodes();
         
         // Cerrar modal y limpiar formulario
         const modal = bootstrap.Modal.getInstance(document.getElementById('createCostoServicioModal'));
         modal.hide();
+        
+        // Limpiar completamente el formulario
         document.getElementById('costo-servicio-form').reset();
         document.getElementById('edit-costo-servicio-id').value = '';
-        
-        // Limpiar y configurar el campo de código
         document.getElementById('costo-servicio-codigo').value = '';
-        document.getElementById('costo-servicio-codigo').readOnly = true;
-        
-        // Ocultar el campo de tipo personalizado
-        document.getElementById('otro-tipo-container').classList.add('d-none');
+        document.getElementById('costo-servicio-tipo').value = '';
+        document.getElementById('costo-servicio-descripcion').value = '';
+        document.getElementById('costo-servicio-precio').value = '';
         
         // showAlert('Servicio guardado exitosamente'); // Comentado para eliminar alerta al guardar
     });
@@ -5528,51 +8311,375 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listener para el formulario de generar remisión
     document.getElementById('generate-remision-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        console.log('🔄 Formulario de generar remisión enviado');
         
-        try {
-            const serviceId = document.getElementById('remision-service-id').value;
-            console.log('🔍 Service ID seleccionado:', serviceId);
-            
-            if (!serviceId || serviceId.trim() === '') {
-                console.error('❌ No se seleccionó ningún servicio');
-                showAlert('Por favor seleccione un servicio para generar la remisión');
-                return;
-            }
-            
-            console.log('✅ Service ID válido, creando remisión...');
+        const serviceId = document.getElementById('remision-service-id').value;
+        if (serviceId) {
             createRemisionFromService(serviceId);
             
             // Cerrar modal y limpiar formulario
             const modal = bootstrap.Modal.getInstance(document.getElementById('generateRemisionModal'));
-            if (modal) {
-                modal.hide();
-                console.log('✅ Modal cerrado');
-            } else {
-                console.warn('⚠️ No se pudo cerrar el modal');
-            }
-            
+            modal.hide();
             document.getElementById('generate-remision-form').reset();
-            console.log('✅ Formulario limpiado');
-            
-        } catch (error) {
-            console.error('❌ Error en el evento submit del formulario de remisión:', error);
-            showAlert('❌ Error al procesar la solicitud. Por favor, intente nuevamente.');
         }
     });
     
     // Event listener para cargar códigos de servicio cuando se abre el modal
+    // Event listeners para búsqueda de código de servicio
+    const serviceCodeInput = document.getElementById('service-code');
+    if (serviceCodeInput) {
+        const suggestionsDiv = document.getElementById('service-code-suggestions');
+        
+        // Mostrar lista al hacer click
+        serviceCodeInput.addEventListener('click', function() {
+            if (costoServicios && costoServicios.length > 0) {
+                showServiceCodeDropdown(serviceCodeInput, suggestionsDiv, false);
+            }
+        });
+        
+        // Mostrar lista al escribir
+        serviceCodeInput.addEventListener('input', searchServiceCode);
+        
+        // Navegación con teclado
+        serviceCodeInput.addEventListener('keydown', function(e) {
+            handleServiceCodeKeyboard(e, serviceCodeInput);
+        });
+        
+        // Ocultar al perder el foco
+        serviceCodeInput.addEventListener('blur', function() {
+            setTimeout(() => {
+                if (suggestionsDiv) suggestionsDiv.style.display = 'none';
+            }, 200);
+        });
+    }
+    
+    // Event listeners para búsqueda de nombre de cliente
+    const clientNameInput = document.getElementById('service-client-name');
+    if (clientNameInput) {
+        clientNameInput.addEventListener('input', searchClientName);
+        clientNameInput.addEventListener('blur', function() {
+            setTimeout(() => {
+                const suggestionsDiv = document.getElementById('client-name-suggestions');
+                if (suggestionsDiv) suggestionsDiv.style.display = 'none';
+                loadClientData();
+            }, 200);
+        });
+    }
+    
+    // Inicializar campo de fecha con funcionalidad de selector
+    const serviceDateInput = document.getElementById('service-date');
+    if (serviceDateInput) {
+        const dateIcon = serviceDateInput.parentElement.querySelector('.date-picker-icon');
+        
+        // Función para abrir el selector de fecha
+        function openDatePicker() {
+            serviceDateInput.type = 'date';
+            // Usar showPicker si está disponible (navegadores modernos)
+            if (serviceDateInput.showPicker) {
+                serviceDateInput.showPicker().catch(() => {
+                    // Si showPicker falla, usar focus
+                    serviceDateInput.focus();
+                });
+            } else {
+                serviceDateInput.focus();
+            }
+        }
+        
+        // Al hacer clic en el input, abrir selector
+        serviceDateInput.addEventListener('click', function(e) {
+            e.preventDefault();
+            openDatePicker();
+        });
+        
+        // Al hacer clic en el icono, abrir selector
+        if (dateIcon) {
+            dateIcon.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openDatePicker();
+            });
+        }
+        
+        // Al enfocar, cambiar a date para mostrar el selector
+        serviceDateInput.addEventListener('focus', function() {
+            if (this.type !== 'date') {
+                this.type = 'date';
+            }
+        });
+        
+        // Al perder el foco, convertir a texto con formato
+        serviceDateInput.addEventListener('blur', function() {
+            if (this.value) {
+                const date = new Date(this.value);
+                if (!isNaN(date.getTime())) {
+                    this.type = 'text';
+                    // Formatear como dd/mm/aaaa
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const year = date.getFullYear();
+                    this.value = `${day}/${month}/${year}`;
+                } else {
+                    this.type = 'text';
+                }
+            } else {
+                this.type = 'text';
+            }
+        });
+    }
+    
+    // Inicializar campo de hora con funcionalidad de selector
+    const serviceTimeInput = document.getElementById('service-time');
+    if (serviceTimeInput) {
+        const timeIcon = serviceTimeInput.parentElement.querySelector('.time-picker-icon');
+        
+        // Función para abrir el selector de hora
+        function openTimePicker() {
+            serviceTimeInput.type = 'time';
+            // Usar showPicker si está disponible (navegadores modernos)
+            if (serviceTimeInput.showPicker) {
+                serviceTimeInput.showPicker().catch(() => {
+                    // Si showPicker falla, usar focus
+                    serviceTimeInput.focus();
+                });
+            } else {
+                serviceTimeInput.focus();
+            }
+        }
+        
+        // Al hacer clic en el input, abrir selector
+        serviceTimeInput.addEventListener('click', function(e) {
+            e.preventDefault();
+            openTimePicker();
+        });
+        
+        // Al hacer clic en el icono, abrir selector
+        if (timeIcon) {
+            timeIcon.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openTimePicker();
+            });
+        }
+        
+        // Al enfocar, cambiar a time para mostrar el selector
+        serviceTimeInput.addEventListener('focus', function() {
+            if (this.type !== 'time') {
+                this.type = 'time';
+            }
+        });
+        
+        // Al perder el foco, convertir a texto con formato de 12 horas
+        serviceTimeInput.addEventListener('blur', function() {
+            if (this.value) {
+                this.type = 'text';
+                // Convertir el valor de formato HH:mm (24 horas) a formato de 12 horas
+                const convertedTime = convertTo12HourFormat(this.value);
+                if (convertedTime) {
+                    this.value = convertedTime;
+                }
+            } else {
+                this.type = 'text';
+            }
+        });
+    }
+    
+    // Inicializar campos de fecha en filtros de costo servicios
+    function initializeCostoServiciosDatePickers() {
+        const dateFromInput = document.getElementById('filter-costo-servicio-date-from');
+        const dateToInput = document.getElementById('filter-costo-servicio-date-to');
+        
+        // Función para inicializar un date picker
+        function setupDatePicker(input, icon) {
+            if (!input) return;
+            
+            // Función para abrir el selector de fecha
+            function openDatePicker() {
+                input.type = 'date';
+                // Usar showPicker si está disponible (navegadores modernos)
+                if (input.showPicker) {
+                    input.showPicker().catch(() => {
+                        // Si showPicker falla, usar focus
+                        input.focus();
+                    });
+                } else {
+                    input.focus();
+                }
+            }
+            
+            // Al hacer clic en el input, abrir selector
+            input.addEventListener('click', function(e) {
+                e.preventDefault();
+                openDatePicker();
+            });
+            
+            // Al hacer clic en el icono, abrir selector
+            if (icon) {
+                icon.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openDatePicker();
+                });
+            }
+            
+            // Al enfocar, cambiar a date para mostrar el selector
+            input.addEventListener('focus', function() {
+                if (this.type !== 'date') {
+                    this.type = 'date';
+                }
+            });
+            
+            // Al perder el foco, convertir a texto con formato
+            input.addEventListener('blur', function() {
+                if (this.value) {
+                    const date = new Date(this.value);
+                    if (!isNaN(date.getTime())) {
+                        this.type = 'text';
+                        // Formatear como dd/mm/aaaa
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const year = date.getFullYear();
+                        this.value = `${day}/${month}/${year}`;
+                    } else {
+                        this.type = 'text';
+                    }
+                } else {
+                    this.type = 'text';
+                }
+            });
+        }
+        
+        // Inicializar ambos campos
+        if (dateFromInput) {
+            const dateFromIcon = dateFromInput.parentElement.querySelector('.date-picker-icon');
+            setupDatePicker(dateFromInput, dateFromIcon);
+        }
+        
+        if (dateToInput) {
+            const dateToIcon = dateToInput.parentElement.querySelector('.date-picker-icon');
+            setupDatePicker(dateToInput, dateToIcon);
+        }
+    }
+    
+    // Inicializar date pickers cuando se carga la página
+    initializeCostoServiciosDatePickers();
+    
+    // Reinicializar cuando se muestra el tab de costo servicios
+    const costoServiciosTab = document.getElementById('costo-servicios-tab');
+    if (costoServiciosTab) {
+        costoServiciosTab.addEventListener('shown.bs.tab', function() {
+            initializeCostoServiciosDatePickers();
+            // Asegurar que la tabla se renderice cuando se muestra la pestaña
+            renderCostoServiciosList(costoServicios, 1);
+        });
+    }
+    
+    // Inicializar campos de fecha en filtros de remisiones
+    function initializeRemisionesDatePickers() {
+        const dateFromInput = document.getElementById('filter-remision-date-from');
+        const dateToInput = document.getElementById('filter-remision-date-to');
+        
+        // Función para inicializar un date picker
+        function setupDatePicker(input, icon) {
+            if (!input) return;
+            
+            // Función para abrir el selector de fecha
+            function openDatePicker() {
+                input.type = 'date';
+                // Usar showPicker si está disponible (navegadores modernos)
+                if (input.showPicker) {
+                    input.showPicker().catch(() => {
+                        // Si showPicker falla, usar focus
+                        input.focus();
+                    });
+                } else {
+                    input.focus();
+                }
+            }
+            
+            // Al hacer clic en el input, abrir selector
+            input.addEventListener('click', function(e) {
+                e.preventDefault();
+                openDatePicker();
+            });
+            
+            // Al hacer clic en el icono, abrir selector
+            if (icon) {
+                icon.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openDatePicker();
+                });
+            }
+            
+            // Al enfocar, cambiar a date para mostrar el selector
+            input.addEventListener('focus', function() {
+                if (this.type !== 'date') {
+                    this.type = 'date';
+                }
+            });
+            
+            // Al perder el foco, convertir a texto con formato
+            input.addEventListener('blur', function() {
+                if (this.value) {
+                    const date = new Date(this.value);
+                    if (!isNaN(date.getTime())) {
+                        this.type = 'text';
+                        // Formatear como dd/mm/aaaa
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const year = date.getFullYear();
+                        this.value = `${day}/${month}/${year}`;
+                    } else {
+                        this.type = 'text';
+                    }
+                } else {
+                    this.type = 'text';
+                }
+            });
+        }
+        
+        // Inicializar ambos campos
+        if (dateFromInput) {
+            const dateFromIcon = dateFromInput.parentElement.querySelector('.date-picker-icon');
+            setupDatePicker(dateFromInput, dateFromIcon);
+        }
+        
+        if (dateToInput) {
+            const dateToIcon = dateToInput.parentElement.querySelector('.date-picker-icon');
+            setupDatePicker(dateToInput, dateToIcon);
+        }
+    }
+    
+    // Inicializar date pickers cuando se carga la página
+    initializeRemisionesDatePickers();
+    
+    // Reinicializar cuando se muestra el tab de remisiones
+    const remisionesTab = document.getElementById('remisiones-tab');
+    if (remisionesTab) {
+        remisionesTab.addEventListener('shown.bs.tab', function() {
+            initializeRemisionesDatePickers();
+            // Asegurar que la tabla se renderice cuando se muestra la pestaña
+            renderRemisionesList(remisiones);
+        });
+    }
+    
     document.getElementById('registerServiceModal').addEventListener('show.bs.modal', function() {
+        // Asegurar que los inputs de fecha y hora siempre sean tipo text
+        const serviceDateInput = document.getElementById('service-date');
+        const serviceTimeInput = document.getElementById('service-time');
+        if (serviceDateInput) {
+            serviceDateInput.type = 'text';
+        }
+        if (serviceTimeInput) {
+            serviceTimeInput.type = 'text';
+        }
+        
         // Solo poblar códigos si no estamos editando (no hay ID de edición)
         const editId = document.getElementById('edit-service-id').value;
         
         if (!editId) {
-            // Es un nuevo servicio, limpiar formulario y poblar códigos
-            clearServiceForm();
+            // Es un nuevo servicio, poblar códigos
             populateServiceCodes();
-            console.log('✅ Modal abierto para crear nuevo servicio');
         } else {
-            console.log('✅ Modal abierto para editar servicio con ID:', editId);
         }
     });
     
@@ -5585,19 +8692,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Es un nuevo servicio, limpiar formulario
             document.getElementById('costo-servicio-form').reset();
             
-            // Configurar el campo de código para nuevos servicios
+            // Limpiar campos
             document.getElementById('costo-servicio-codigo').value = '';
-            document.getElementById('costo-servicio-codigo').readOnly = true;
-            document.getElementById('costo-servicio-codigo').style.backgroundColor = '#f8f9fa';
-            document.getElementById('costo-servicio-codigo').placeholder = 'Se generará automáticamente';
-            
-            // Ocultar el campo de tipo personalizado
-            document.getElementById('otro-tipo-container').classList.add('d-none');
-            document.getElementById('costo-servicio-otro-tipo').value = '';
-            
-            console.log('✅ Modal abierto para crear nuevo servicio');
+            document.getElementById('costo-servicio-tipo').value = '';
         } else {
-            console.log('✅ Modal abierto para editar servicio con ID:', editId);
         }
     });
     
@@ -5605,21 +8703,28 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('service-form').addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const date = document.getElementById('service-date').value;
+        // Convertir fecha de formato dd/mm/yyyy a YYYY-MM-DD antes de guardar
+        const dateInput = document.getElementById('service-date').value;
+        const date = convertDateToISO(dateInput);
+        if (!date && dateInput) {
+            showAlert('Por favor ingresa una fecha válida en formato dd/mm/yyyy');
+            return;
+        }
+        
+        // Obtener hora y convertir a formato de 12 horas
+        const timeInput = String(document.getElementById('service-time').value || '').trim();
+        const time = convertTo12HourFormat(timeInput);
         const serviceCode = document.getElementById('service-code').value;
         let safeType = document.getElementById('service-type').value;
         let description = document.getElementById('service-description').value;
         const location = document.getElementById('service-location').value;
         const clientName = document.getElementById('service-client-name').value;
         const clientPhone = document.getElementById('service-client-phone').value;
+        const clientNit = document.getElementById('service-client-nit').value;
+        const clientEmail = document.getElementById('service-client-email').value;
         const status = document.getElementById('service-status').value;
         
         // Obtener siempre los datos del código de servicio seleccionado para garantizar sincronización
-        console.log('=== Obteniendo datos del formulario ===');
-        console.log('Código de servicio seleccionado:', serviceCode);
-        console.log('Tipo de servicio en formulario:', safeType);
-        console.log('Descripción en formulario:', description);
-        
         // Validar que se haya seleccionado un código de servicio
         if (!serviceCode || serviceCode.trim() === '') {
             showAlert('Por favor selecciona un código de servicio');
@@ -5627,23 +8732,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const servicio = costoServicios.find(s => s.codigo === serviceCode);
-        console.log('Buscando en costoServicios:', costoServicios);
-        console.log('Servicio encontrado:', servicio);
-        
         if (servicio) {
             safeType = servicio.tipo;
             description = servicio.descripcion;
-            console.log('✅ Datos sincronizados del código de servicio:', serviceCode);
-            console.log('   Tipo de servicio:', safeType);
-            console.log('   Descripción:', description);
         } else {
-            console.log('❌ No se encontró servicio con código:', serviceCode);
-            console.log('CostoServicios disponibles:', costoServicios.map(s => ({codigo: s.codigo, tipo: s.tipo})));
             showAlert('El código de servicio seleccionado no existe en la base de datos');
             return;
         }
-        console.log('=== Fin obtención de datos ===');
-        
         // Validar que se haya ingresado la ubicación
         if (!location.trim()) {
             showAlert('Por favor ingresa la ubicación del servicio');
@@ -5653,38 +8748,54 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle required fields for Finalizado status for technician
         if (status === 'Finalizado' && currentUser.role === 'employee') {
             let missingFields = [];
-            
-            // Verificar foto de evidencia
             const photoInput = document.getElementById('service-photo');
-            const photoPreview = document.getElementById('service-photo-preview');
-            const hasPhoto = photoInput.files.length > 0 || (photoPreview.src && photoPreview.src !== 'data:,' && !photoPreview.classList.contains('d-none'));
-            
-            if (!hasPhoto) {
-                missingFields.push('foto de evidencia');
-            }
-            
-            // Verificar firma del cliente
-            if (signaturePadClient && signaturePadClient.isEmpty()) {
-                missingFields.push('firma del cliente');
-            }
-            
-            // Verificar firma del técnico
-            if (signaturePadTechnician && signaturePadTechnician.isEmpty()) {
-                missingFields.push('firma del técnico');
-            }
+            if (!photoInput.files.length && !document.getElementById('service-photo-preview').src) missingFields.push('foto de evidencia');
+            if (signaturePadClient && signaturePadClient.isEmpty()) missingFields.push('firma del cliente');
+            if (signaturePadTechnician && signaturePadTechnician.isEmpty()) missingFields.push('firma del técnico');
 
             if (missingFields.length > 0) {
-                console.log('❌ Campos faltantes para finalizar servicio:', missingFields);
-                console.log('📸 Estado de foto:', { 
-                    hasFiles: photoInput.files.length > 0, 
-                    hasPreview: photoPreview.src && photoPreview.src !== 'data:,', 
-                    isHidden: photoPreview.classList.contains('d-none') 
-                });
                 showAlert(`Para finalizar el servicio, por favor proporcione: ${missingFields.join(', ')}.`);
                 return; // Prevent form submission
             }
-            
-            console.log('✅ Todos los campos requeridos están completos para finalizar el servicio');
+        }
+        
+        // Obtener cantidad del servicio
+        const quantity = parseInt(document.getElementById('service-quantity').value) || 1;
+        
+        // Obtener servicios adicionales
+        const additionalServices = [];
+        const additionalServicesContainer = document.getElementById('additional-services-container');
+        if (additionalServicesContainer) {
+            const additionalServiceDivs = additionalServicesContainer.querySelectorAll('.bg-light');
+            additionalServiceDivs.forEach(div => {
+                const codeInput = div.querySelector('.additional-service-code');
+                const typeInput = div.querySelector('.additional-service-type');
+                const descriptionInput = div.querySelector('.additional-service-description');
+                const quantityInput = div.querySelector('.additional-service-quantity');
+                
+                if (codeInput && codeInput.value.trim() !== '') {
+                    const serviceCode = codeInput.value.trim();
+                    // Buscar el servicio en costoServicios para obtener tipo y descripción si no están llenos
+                    let serviceType = typeInput ? typeInput.value.trim() : '';
+                    let serviceDescription = descriptionInput ? descriptionInput.value.trim() : '';
+                    
+                    // Si no hay tipo o descripción, intentar obtenerlos del código
+                    if ((!serviceType || !serviceDescription) && costoServicios) {
+                        const servicio = costoServicios.find(s => s.codigo === serviceCode);
+                        if (servicio) {
+                            if (!serviceType) serviceType = servicio.tipo || '';
+                            if (!serviceDescription) serviceDescription = servicio.descripcion || '';
+                        }
+                    }
+                    
+                    additionalServices.push({
+                        code: serviceCode,
+                        type: serviceType,
+                        description: serviceDescription,
+                        quantity: quantityInput ? parseInt(quantityInput.value) || 1 : 1
+                    });
+                }
+            });
         }
         
         // Obtener datos de foto si existe
@@ -5696,18 +8807,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const reader = new FileReader();
             reader.onload = function(e) {
                 photoData = e.target.result;
-                saveServiceData(document.getElementById('edit-service-id').value, date, safeType, description, location, clientName, clientPhone, status, photoData);
+                saveServiceData(document.getElementById('edit-service-id').value, date, time, safeType, description, location, clientName, clientPhone, clientNit, clientEmail, status, photoData, quantity, additionalServices);
             };
             reader.readAsDataURL(file);
         } else {
-            saveServiceData(document.getElementById('edit-service-id').value, date, safeType, description, location, clientName, clientPhone, status, photoData);
+            saveServiceData(document.getElementById('edit-service-id').value, date, time, safeType, description, location, clientName, clientPhone, clientNit, clientEmail, status, photoData, quantity, additionalServices);
         }
     });
 });
 
 // Inicialización de los nuevos módulos cuando se muestra el dashboard de administrador
 function initializeAdminModules() {
-    renderCostoServiciosList();
+    renderCostoServiciosList(costoServicios, 1);
     renderRemisionesList();
     populateServiceCodes();
 }
@@ -5715,11 +8826,8 @@ function initializeAdminModules() {
 // Verificar compatibilidad de geolocalización al cargar la página
 if (window.initializeGeolocation) {
     window.initializeGeolocation().then(result => {
-        console.log('🌍 Estado de geolocalización:', result);
         if (!result.supported) {
-            console.warn('⚠️ Geolocalización no soportada en este navegador');
         }
     }).catch(error => {
-        console.warn('⚠️ Error al inicializar geolocalización:', error);
     });
 }

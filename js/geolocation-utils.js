@@ -1,3 +1,15 @@
+// Silenciar todos los console.log para producción
+(function() {
+    const noop = function() {};
+    if (typeof console !== 'undefined') {
+        console.log = noop;
+        console.debug = noop;
+        console.info = noop;
+        console.warn = noop;
+        console.error = noop;
+    }
+})();
+
 /**
  * Utilidades de Geolocalización Mejorada
  * Compatible con Chrome, Firefox, Edge, Brave, Safari

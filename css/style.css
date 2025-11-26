@@ -103,10 +103,13 @@
 @media (min-width: 769px) {
     #employee-services .table-responsive {
         overflow-x: auto;
+        margin: 0;
+        padding: 0;
     }
     
     #employee-services .table {
         min-width: 1380px;
+        margin: 0 auto;
     }
     
     /* Asegurar que la columna de acciones tenga suficiente espacio */
@@ -294,6 +297,15 @@
 /* Asegurar que la tabla de servicios asignados del técnico tenga scroll horizontal */
 #employee-services .table-responsive {
     overflow-x: auto;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Asegurar que el card-body tenga el mismo padding que las demás tablas */
+#employee-services .card-body {
+    padding: var(--space-6);
 }
 
 .table {
@@ -664,6 +676,7 @@ body {
     padding: var(--space-3) var(--space-6);
     border: none;
     border-radius: var(--radius-lg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     font-weight: 600;
     font-size: 0.875rem;
     text-decoration: none;
@@ -671,8 +684,8 @@ body {
     transition: all var(--transition-normal);
     position: relative;
     overflow: hidden;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    text-transform: none;
+    letter-spacing: 0;
     min-height: 44px;
 }
 
@@ -906,6 +919,10 @@ body {
     padding: var(--space-4);
     border-bottom: 2px solid var(--border-color);
     text-align: left;
+    height: auto;
+    min-height: 48px;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 
 .table tbody tr {
@@ -920,6 +937,7 @@ body {
     padding: var(--space-4);
     color: var(--text-primary);
     vertical-align: middle;
+    text-align: left !important;
 }
 
 .table-responsive {
@@ -1453,6 +1471,9 @@ input[type="number"] {
     color: var(--text-light) !important;
     font-weight: 600;
     border-right: 2px solid var(--border-color);
+    min-height: 48px;
+    height: auto;
+    vertical-align: middle;
 }
 
 /* Animaciones para badges */
@@ -1487,6 +1508,38 @@ input[type="number"] {
 }
 
 /* Badges específicos para pestañas */
+/* Asegurar que los badges en los tabs se mantengan en línea */
+.nav-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+
+.nav-tabs .nav-item {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.nav-link {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+}
+
+.nav-link span {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.nav-link .badge {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+    margin-left: 0.25rem;
+}
+
 #admin-reports-tab .badge.bg-danger,
 #admin-notifications-tab .badge.bg-danger,
 #employee-notifications-tab .badge.bg-danger {
@@ -1707,6 +1760,9 @@ input[type="number"] {
 [data-theme="dark"] .table thead th {
     color: #ffffff !important;
     background-color: var(--consegur-blue) !important;
+    min-height: 48px;
+    height: auto;
+    vertical-align: middle;
 }
 
 [data-theme="dark"] .card-header {
@@ -1835,6 +1891,9 @@ input[type="number"] {
     color: #ffffff !important;
     border-right-color: var(--consegur-blue) !important;
     font-weight: 600;
+    min-height: 48px;
+    height: auto;
+    vertical-align: middle;
 }
 
 /* Mejorar visibilidad de cards en modo oscuro */
@@ -1894,6 +1953,46 @@ input[type="number"] {
     background-color: var(--consegur-blue) !important;
     color: #ffffff !important;
     border-right-color: var(--consegur-blue) !important;
+    min-height: 48px;
+    height: auto;
+    vertical-align: middle;
+}
+
+/* Asegurar altura consistente de encabezados en la tabla de servicios */
+#services .table thead th,
+#services .table-responsive .table thead th,
+.table thead th {
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding: 0.75rem 1rem !important;
+    line-height: 1.5 !important;
+    vertical-align: middle !important;
+    box-sizing: border-box !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Asegurar que la primera columna también tenga altura consistente */
+#services .table thead th:first-child,
+#services .table-responsive .table thead th:first-child,
+.table thead th:first-child {
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding: 0.75rem 1rem !important;
+    line-height: 1.5 !important;
+    vertical-align: middle !important;
+    box-sizing: border-box !important;
+}
+
+/* Asegurar que la fila del encabezado tenga altura fija */
+#services .table thead tr,
+#services .table-responsive .table thead tr,
+.table thead tr {
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
 }
 
 /* Texto negro en reportes/novedades y notificaciones en modo oscuro */
@@ -2295,43 +2394,57 @@ input[type="number"] {
 
 /* ===== FILTROS DE ESTADO PARA TÉCNICO ===== */
 .employee-filters {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    margin-bottom: var(--space-4);
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
 }
 
-.employee-filters .btn-group {
+.employee-filters h6 {
+    color: #000000;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.employee-filters .btn-group,
+.employee-filter-buttons {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
+    gap: 8px;
 }
 
-.employee-filters .btn {
-    border-radius: var(--radius-md);
+.employee-filters .btn,
+.btn-filter {
+    border-radius: 6px;
     font-size: 0.875rem;
-    padding: var(--space-2) var(--space-4);
-    border: 2px solid var(--border-color);
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    transition: all var(--transition-normal);
+    padding: 8px 16px;
+    border: 1px solid #e0e0e0;
+    background: #ffffff;
+    color: #333333;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.employee-filters .btn:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--text-secondary);
+.employee-filters .btn:hover,
+.btn-filter:hover {
+    background: #f5f5f5;
+    border-color: #d0d0d0;
 }
 
 .employee-filters .btn.active,
-.employee-filters .btn-group .btn.active {
+.employee-filters .btn-group .btn.active,
+.btn-filter.active {
     background: #007bff !important;
     color: #ffffff !important;
     border-color: #007bff !important;
 }
 
-.employee-filters .btn.active:hover {
+.employee-filters .btn.active:hover,
+.btn-filter.active:hover {
     background: #0056b3 !important;
     border-color: #0056b3;
 }
@@ -2340,45 +2453,81 @@ input[type="number"] {
 .employee-filters .btn .badge {
     font-size: 0.7rem;
     padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
+    border-radius: 6px;
     font-weight: 600;
-    transition: all var(--transition-fast);
+    transition: all 0.2s ease;
+    margin-left: 4px;
 }
 
-.employee-filters .btn:hover .badge {
-    transform: scale(1.1);
+/* Colores específicos para cada tipo de filtro según la imagen */
+.employee-filters .btn .badge.badge-grey,
+.badge.badge-grey {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
 }
 
-.employee-filters .btn.active .badge {
-    background-color: var(--text-light) !important;
-    color: var(--primary-color);
-    font-weight: 700;
+.employee-filters .btn .badge.badge-orange,
+.badge.badge-orange {
+    background-color: #ff9800 !important;
+    color: #ffffff !important;
 }
 
-/* Colores específicos para cada tipo de filtro */
+.employee-filters .btn .badge.badge-blue,
+.badge.badge-blue {
+    background-color: #2196F3 !important;
+    color: #ffffff !important;
+}
+
+.employee-filters .btn .badge.badge-green,
+.badge.badge-green {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+}
+
+.employee-filters .btn .badge.badge-red,
+.badge.badge-red {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+/* Badges en botón activo */
+.employee-filters .btn.active .badge.badge-grey {
+    background-color: #ffffff !important;
+    color: #007bff !important;
+}
+
+.employee-filters .btn.active .badge.badge-orange,
+.employee-filters .btn.active .badge.badge-blue,
+.employee-filters .btn.active .badge.badge-green,
+.employee-filters .btn.active .badge.badge-red {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    color: #ffffff !important;
+}
+
+/* Colores legacy para compatibilidad */
 .employee-filters .btn .badge.bg-secondary {
-    background-color: var(--text-secondary) !important;
-    color: var(--text-light);
+    background-color: #6c757d !important;
+    color: #ffffff !important;
 }
 
 .employee-filters .btn .badge.bg-warning {
-    background-color: var(--warning-color) !important;
-    color: var(--text-light);
+    background-color: #ff9800 !important;
+    color: #ffffff !important;
 }
 
 .employee-filters .btn .badge.bg-info {
-    background-color: var(--info-color) !important;
-    color: var(--text-light);
+    background-color: #2196F3 !important;
+    color: #ffffff !important;
 }
 
 .employee-filters .btn .badge.bg-success {
-    background-color: var(--success-color) !important;
-    color: var(--text-light);
+    background-color: #28a745 !important;
+    color: #ffffff !important;
 }
 
 .employee-filters .btn .badge.bg-danger {
-    background-color: var(--danger-color) !important;
-    color: var(--text-light);
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
 }
 
 /* Modo oscuro para badges */
@@ -2390,6 +2539,83 @@ input[type="number"] {
 [data-theme="dark"] .employee-filters .btn.active .badge {
     background-color: var(--primary-color) !important;
     color: var(--text-light);
+}
+
+/* Estilos para botones de acción en servicios asignados del técnico */
+.btn-cambiar-estado {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+    border-color: #6c757d !important;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 4px 8px;
+}
+
+.btn-cambiar-estado:hover {
+    background-color: #5a6268 !important;
+    border-color: #5a6268 !important;
+}
+
+.btn-cambiar-estado:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-ver-servicio {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+    border-color: #0d6efd !important;
+    border-radius: var(--radius-md) !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: var(--space-1) !important;
+}
+
+.btn-ver-servicio:hover {
+    background-color: #0b5ed7 !important;
+    border-color: #0b5ed7 !important;
+}
+
+.btn-alerta-servicio {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border-color: #dc3545 !important;
+    border-radius: var(--radius-md) !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: var(--space-1) !important;
+}
+
+.btn-alerta-servicio:hover {
+    background-color: #bb2d3b !important;
+    border-color: #bb2d3b !important;
+}
+
+.btn-iniciar-servicio {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+    border-color: #28a745 !important;
+    border-radius: var(--radius-md) !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: var(--space-1) !important;
+}
+
+.btn-iniciar-servicio:hover {
+    background-color: #218838 !important;
+    border-color: #218838 !important;
 }
 
 /* Responsive para filtros */
@@ -2598,6 +2824,217 @@ input[type="number"] {
     }
 }
 
+/* ===== ESTILOS ESPECÍFICOS PARA TABLA DE REMISIONES ===== */
+/* Hacer que la tabla de remisiones sea responsive como las demás - sin scroll horizontal */
+#remisiones .table-responsive {
+    overflow-x: visible;
+}
+
+#remisiones .table {
+    width: 100%;
+    table-layout: auto;
+}
+
+/* Permitir que los encabezados se dividan en múltiples líneas */
+#remisiones .table thead th {
+    white-space: normal !important;
+    word-wrap: break-word;
+    line-height: 1.3 !important;
+    height: auto !important;
+    min-height: 48px !important;
+    padding: 0.5rem 0.3rem !important;
+    vertical-align: middle !important;
+}
+
+/* Primera columna (símbolo #) - compacta con fondo azul sólido */
+#remisiones .table thead th:first-child {
+    width: 50px !important;
+    min-width: 50px !important;
+    text-align: center !important;
+    padding: 0.5rem 0.3rem !important;
+    background-color: var(--consegur-blue) !important;
+    white-space: nowrap !important;
+}
+
+#remisiones .table tbody td:first-child {
+    width: 50px !important;
+    min-width: 50px !important;
+    text-align: center !important;
+    padding: 0.5rem 0.3rem !important;
+}
+
+/* Asegurar que el símbolo # sea visible con fondo azul sólido y texto blanco */
+#remisiones .table thead th:first-child > div {
+    width: 30px !important;
+    height: 30px !important;
+    background-color: var(--consegur-blue) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 4px !important;
+    margin: 0 auto !important;
+}
+
+#remisiones .table thead th:first-child > div > span {
+    color: #ffffff !important;
+    font-weight: bold !important;
+    font-size: 1rem !important;
+    display: block !important;
+    line-height: 1 !important;
+}
+
+/* Columnas con anchos flexibles - encabezados en múltiples líneas, contenido en una línea */
+#remisiones .table thead th:nth-child(2), /* ID REMISIÓN */
+#remisiones .table thead th:nth-child(3), /* FECHA DE REMISIÓN */
+#remisiones .table thead th:nth-child(4), /* HORA DE REMISIÓN */
+#remisiones .table thead th:nth-child(5), /* ID SERVICIO */
+#remisiones .table thead th:nth-child(6), /* FECHA DE SERVICIO */
+#remisiones .table thead th:nth-child(7), /* CÓDIGO SERVICIO */
+#remisiones .table thead th:nth-child(8), /* CLIENTE */
+#remisiones .table thead th:nth-child(9), /* TÉCNICO */
+#remisiones .table thead th:nth-child(10), /* PRECIO */
+#remisiones .table thead th:last-child { /* ACCIONES */
+    white-space: normal !important;
+    word-wrap: break-word;
+    line-height: 1.3 !important;
+}
+
+/* Contenido de las celdas - mantener en una línea con anchos optimizados */
+#remisiones .table tbody td {
+    padding: 0.5rem 0.3rem !important;
+    font-size: 0.875rem !important;
+}
+
+#remisiones .table tbody td:nth-child(2) {
+    min-width: 90px;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#remisiones .table tbody td:nth-child(3) {
+    min-width: 100px;
+    max-width: 110px;
+    white-space: nowrap;
+}
+
+#remisiones .table tbody td:nth-child(4) {
+    min-width: 110px;
+    max-width: 120px;
+    white-space: nowrap;
+}
+
+#remisiones .table tbody td:nth-child(5) {
+    min-width: 90px;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#remisiones .table tbody td:nth-child(6) {
+    min-width: 100px;
+    max-width: 110px;
+    white-space: nowrap;
+}
+
+#remisiones .table tbody td:nth-child(7) {
+    min-width: 120px;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#remisiones .table tbody td:nth-child(8) {
+    min-width: 130px;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#remisiones .table tbody td:nth-child(9) {
+    min-width: 90px;
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#remisiones .table tbody td:nth-child(10) {
+    min-width: 70px;
+    max-width: 90px;
+    white-space: nowrap;
+    text-align: left !important;
+}
+
+/* Encabezados más compactos */
+#remisiones .table thead th {
+    padding: 0.5rem 0.3rem !important;
+    font-size: 0.75rem !important;
+}
+
+/* Columna de acciones - compacta */
+#remisiones .table thead th:last-child {
+    min-width: 80px !important;
+    max-width: 90px !important;
+    text-align: center !important;
+    padding: 0.5rem 0.3rem !important;
+}
+
+#remisiones .table tbody td:last-child {
+    min-width: 80px !important;
+    max-width: 90px !important;
+    text-align: center !important;
+    padding: 0.4rem 0.3rem !important;
+}
+
+/* Botones de acciones alineados verticalmente - cuadrados como en la imagen */
+#remisiones .table tbody td:last-child .btn {
+    display: block !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    max-width: 38px !important;
+    max-height: 38px !important;
+    margin: 0 auto 0.25rem auto !important;
+    padding: 0 !important;
+    font-size: 0.875rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0.375rem !important;
+}
+
+#remisiones .table tbody td:last-child .btn:last-child {
+    margin-bottom: 0 !important;
+}
+
+#remisiones .table tbody td:last-child .btn i {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+}
+
+/* Modo oscuro para tabla de remisiones */
+[data-theme="dark"] #remisiones .table thead th:first-child {
+    background-color: var(--consegur-blue) !important;
+}
+
+[data-theme="dark"] #remisiones .table tbody td:first-child {
+    background-color: #4a5568 !important;
+}
+
+[data-theme="dark"] #remisiones .table thead th:last-child {
+    background-color: var(--consegur-blue) !important;
+}
+
+[data-theme="dark"] #remisiones .table tbody td:last-child {
+    background-color: #2d3748 !important;
+}
+
 /* ===== TARJETAS DE USUARIOS PARA VISTA MÓVIL ===== */
 .user-card {
     background: var(--card-bg);
@@ -2658,4 +3095,603 @@ input[type="number"] {
     flex: 1;
     font-size: 0.85rem;
     padding: 0.5rem 1rem;
+}
+
+/* ===== FOOTER NEXTGEN DIGITAL ===== */
+.nextgen-footer {
+    background-color: #1e3a8a; /* Azul oscuro */
+    border-top: 1px solid #60a5fa; /* Borde superior azul claro más delgado */
+    padding: 0.2rem 0;
+    margin: 0;
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+.footer-content {
+    text-align: left;
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.15rem 1rem;
+    margin: 0;
+    line-height: 1.1;
+}
+
+/* Agregar padding al body para que el contenido no quede oculto detrás del footer */
+body {
+    padding-bottom: 2.5rem;
+}
+
+.footer-link-bold {
+    font-weight: bold;
+    color: white;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-link-bold:hover {
+    color: #93c5fd; /* Azul claro al pasar el mouse */
+    text-decoration: underline;
+}
+
+.footer-link {
+    color: white;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+    color: #93c5fd; /* Azul claro al pasar el mouse */
+    text-decoration: underline;
+}
+
+/* Ocultar iconos nativos del navegador en inputs de fecha y hora */
+#service-date::-webkit-calendar-picker-indicator,
+#service-time::-webkit-calendar-picker-indicator {
+    display: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+#service-date[type="date"],
+#service-time[type="time"] {
+    position: relative;
+    padding-right: 0.75rem !important;
+}
+
+#service-date[type="date"]::-webkit-inner-spin-button,
+#service-date[type="date"]::-webkit-outer-spin-button,
+#service-time[type="time"]::-webkit-inner-spin-button,
+#service-time[type="time"]::-webkit-outer-spin-button {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    margin: 0;
+    display: none !important;
+}
+
+/* Estilos para los iconos de fecha y hora */
+.date-picker-icon,
+.time-picker-icon {
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: auto;
+}
+
+.date-picker-icon:hover,
+.time-picker-icon:hover {
+    background-color: #e9ecef;
+}
+
+/* ===== ESTILOS UNIFICADOS PARA TODOS LOS MODALES ===== */
+/* Headers de modales - Tipo de letra, color y tamaño unificados */
+.modal .modal-header .modal-title,
+.modal-header .modal-title,
+.modal-title,
+.modal .modal-header h5.modal-title,
+.modal-header h5.modal-title,
+.modal h5.modal-title,
+.modal .modal-header .modal-title.fw-bold,
+.modal-header .modal-title.fw-bold {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+/* Labels en modales - Tipo de letra, color y tamaño unificados */
+.modal .form-label,
+.modal label.form-label,
+.modal-body .form-label {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: #1a202c !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Inputs y selects en modales - Tipo de letra, color y tamaño unificados */
+.modal .form-control,
+.modal .form-select,
+.modal-body .form-control,
+.modal-body .form-select,
+.modal input.form-control,
+.modal select.form-select,
+.modal textarea.form-control {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 1rem !important;
+    font-weight: 400 !important;
+    color: #1a202c !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0 !important;
+}
+
+/* Placeholders en modales - Tipo de letra, color y tamaño unificados */
+.modal .form-control::placeholder,
+.modal input::placeholder,
+.modal textarea::placeholder {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 1rem !important;
+    font-weight: 400 !important;
+    color: #718096 !important;
+    line-height: 1.5 !important;
+    letter-spacing: 0 !important;
+    opacity: 1 !important;
+}
+
+/* Asegurar que los inputs con fw-bold mantengan el estilo unificado */
+.modal .form-label.fw-bold {
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    text-transform: uppercase !important;
+}
+
+/* Estilos para modo oscuro - mantener consistencia */
+[data-theme="dark"] .modal .modal-header .modal-title,
+[data-theme="dark"] .modal-header .modal-title,
+[data-theme="dark"] .modal-title {
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .modal .form-label,
+[data-theme="dark"] .modal label.form-label,
+[data-theme="dark"] .modal-body .form-label {
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .modal .form-control,
+[data-theme="dark"] .modal .form-select,
+[data-theme="dark"] .modal-body .form-control,
+[data-theme="dark"] .modal-body .form-select {
+    color: #ffffff !important;
+    background-color: #2d3748 !important;
+}
+
+[data-theme="dark"] .modal .form-control::placeholder,
+[data-theme="dark"] .modal input::placeholder,
+[data-theme="dark"] .modal textarea::placeholder {
+    color: #a0aec0 !important;
+}
+
+/* ===== ESTILOS PARA SERVICIOS ADICIONALES ===== */
+#additional-services-container .mb-3.bg-light {
+    background-color: #f8f9fa !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: 0.5rem !important;
+    position: relative;
+}
+
+#additional-services-container .mb-3.bg-light .col-md-6 {
+    position: relative;
+}
+
+#additional-services-container .mb-3.bg-light .form-label {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: #1a202c !important;
+    text-transform: uppercase !important;
+    margin-bottom: 0.5rem !important;
+}
+
+#additional-services-container .mb-3.bg-light .form-control {
+    font-size: 1rem !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 0.375rem !important;
+}
+
+#additional-services-container .mb-3.bg-light .btn-link.text-danger {
+    font-size: 0.875rem !important;
+    font-weight: 400 !important;
+    padding: 0.5rem 0 !important;
+}
+
+#additional-services-container .mb-3.bg-light .btn-link.text-danger:hover {
+    text-decoration: underline !important;
+}
+
+/* Estilos para modo oscuro */
+[data-theme="dark"] #additional-services-container .mb-3.bg-light {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+}
+
+[data-theme="dark"] #additional-services-container .mb-3.bg-light .form-label {
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] #additional-services-container .mb-3.bg-light .form-control {
+    background-color: #1a202c !important;
+    border-color: #4a5568 !important;
+    color: #ffffff !important;
+}
+
+/* ===== ESTILOS PARA SELECTOR DE CÓDIGO DE SERVICIO ===== */
+.service-code-selector {
+    position: relative;
+    width: 100%;
+}
+
+.service-code-label {
+    font-weight: 700 !important;
+    font-size: 0.875rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 0.5rem !important;
+    display: block;
+}
+
+.service-code-input {
+    width: 100% !important;
+    padding: 0.75rem 1rem !important;
+    border: 2px solid var(--border-color) !important;
+    border-radius: 0.375rem !important;
+    font-size: 1rem !important;
+    transition: all var(--transition-normal) !important;
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.service-code-input:focus {
+    border-color: #0d6efd !important;
+    border-width: 2px !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+    outline: none !important;
+}
+
+.service-code-input::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 1 !important;
+}
+
+.service-code-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    box-shadow: var(--shadow-lg);
+    z-index: 1050;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 0.25rem;
+}
+
+.service-code-item {
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid var(--border-light) !important;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    text-decoration: none;
+    display: block;
+}
+
+.service-code-item:last-child {
+    border-bottom: none !important;
+}
+
+.service-code-item:hover,
+.service-code-item.active {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+.service-code-option {
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+/* Modo oscuro para selector de código de servicio */
+[data-theme="dark"] .service-code-label {
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .service-code-input {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .service-code-input:focus {
+    border-color: #63b3ed !important;
+    box-shadow: 0 0 0 0.25rem rgba(99, 179, 237, 0.25) !important;
+}
+
+[data-theme="dark"] .service-code-input::placeholder {
+    color: #a0aec0 !important;
+}
+
+[data-theme="dark"] .service-code-suggestions {
+    background-color: #2d3748 !important;
+    border-color: #4a5568 !important;
+}
+
+[data-theme="dark"] .service-code-item {
+    border-bottom-color: #4a5568 !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .service-code-item:hover,
+[data-theme="dark"] .service-code-item.active {
+    background-color: #4a5568 !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .service-code-option {
+    color: #ffffff;
+}
+
+/* ===== ESTILOS PARA BOTONES DE ESTADO Y ACCIONES DE SERVICIOS ===== */
+/* Botón de estado del servicio */
+.btn-status-service {
+    background-color: #ffc107 !important; /* Amarillo */
+    color: #5d4037 !important; /* Marrón oscuro para el texto */
+    border: 2px solid #5d4037 !important; /* Borde marrón oscuro */
+    border-radius: 0.375rem !important;
+    padding: 0.5rem 1rem !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    cursor: default !important;
+    min-width: 120px !important;
+    text-align: center !important;
+    transition: none !important;
+}
+
+.btn-status-service:disabled {
+    opacity: 1 !important;
+    cursor: default !important;
+}
+
+/* Colores de estado según los cuadros de filtración */
+.btn-status-finalizado {
+    background-color: #198754 !important; /* Verde - bg-success */
+    color: #ffffff !important;
+    border-color: #198754 !important;
+}
+
+.btn-status-en-proceso {
+    background-color: #ffc107 !important; /* Amarillo - bg-warning */
+    color: #000000 !important;
+    border-color: #ffc107 !important;
+}
+
+.btn-status-pendiente {
+    background-color: #0dcaf0 !important; /* Cyan - bg-info */
+    color: #000000 !important;
+    border-color: #0dcaf0 !important;
+}
+
+.btn-status-cancelado {
+    background-color: #dc3545 !important; /* Rojo - bg-danger */
+    color: #ffffff !important;
+    border-color: #dc3545 !important;
+}
+
+.btn-status-default {
+    background-color: #6c757d !important; /* Gris por defecto */
+    color: #ffffff !important;
+    border-color: #6c757d !important;
+}
+
+/* Modo oscuro para botones de estado */
+[data-theme="dark"] .btn-status-finalizado {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+    border-color: #198754 !important;
+}
+
+[data-theme="dark"] .btn-status-en-proceso {
+    background-color: #ffc107 !important;
+    color: #000000 !important;
+    border-color: #ffc107 !important;
+}
+
+[data-theme="dark"] .btn-status-pendiente {
+    background-color: #0dcaf0 !important;
+    color: #000000 !important;
+    border-color: #0dcaf0 !important;
+}
+
+[data-theme="dark"] .btn-status-cancelado {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border-color: #dc3545 !important;
+}
+
+[data-theme="dark"] .btn-status-default {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+    border-color: #6c757d !important;
+}
+
+/* Contenedor de acciones de servicios */
+.service-actions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 50px;
+}
+
+/* Botones de acción dentro del contenedor - siempre apilados verticalmente */
+.service-action-btn {
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+}
+
+/* Botones de acción cuadrados */
+.btn-action-square {
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    border-radius: 0.375rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 2px solid !important;
+    font-size: 1rem !important;
+    transition: all var(--transition-normal) !important;
+    cursor: pointer !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+}
+
+.btn-action-square i {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+}
+
+/* Botón Ver (azul) */
+.btn-action-view {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+    border-color: #0d6efd !important;
+}
+
+.btn-action-view:hover:not(:disabled) {
+    background-color: #0b5ed7 !important;
+    border-color: #0a58ca !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+}
+
+.btn-action-view:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Botón Editar (verde) */
+.btn-action-edit {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+    border-color: #198754 !important;
+}
+
+.btn-action-edit:hover:not(:disabled) {
+    background-color: #157347 !important;
+    border-color: #146c43 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(25, 135, 84, 0.3);
+}
+
+.btn-action-edit:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Botón Eliminar (rojo) */
+.btn-action-delete {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border-color: #dc3545 !important;
+}
+
+.btn-action-delete:hover:not(:disabled) {
+    background-color: #bb2d3b !important;
+    border-color: #b02a37 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-action-delete:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+/* Botones deshabilitados */
+.btn-action-square:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #ffffff !important;
+}
+
+/* Modo oscuro para botones de estado */
+[data-theme="dark"] .btn-status-service {
+    background-color: #ffc107 !important;
+    color: #5d4037 !important;
+    border-color: #5d4037 !important;
+}
+
+/* Modo oscuro para botones de acción */
+[data-theme="dark"] .btn-action-view {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+    border-color: #0d6efd !important;
+}
+
+[data-theme="dark"] .btn-action-view:hover:not(:disabled) {
+    background-color: #0b5ed7 !important;
+    border-color: #0a58ca !important;
+}
+
+[data-theme="dark"] .btn-action-edit {
+    background-color: #198754 !important;
+    color: #ffffff !important;
+    border-color: #198754 !important;
+}
+
+[data-theme="dark"] .btn-action-edit:hover:not(:disabled) {
+    background-color: #157347 !important;
+    border-color: #146c43 !important;
+}
+
+[data-theme="dark"] .btn-action-delete {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border-color: #dc3545 !important;
+}
+
+[data-theme="dark"] .btn-action-delete:hover:not(:disabled) {
+    background-color: #bb2d3b !important;
+    border-color: #b02a37 !important;
+}
+
+[data-theme="dark"] .btn-action-square:disabled {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: #ffffff !important;
 }
