@@ -679,6 +679,12 @@ function forceLoadServiceDataInModal(service) {
         document.getElementById('service-client-name').value = service.clientName || '';
         document.getElementById('service-client-phone').value = service.clientPhone || '';
         
+        // Cargar número de aviso
+        const avisoNumberInput = document.getElementById('service-aviso-number');
+        if (avisoNumberInput) {
+            avisoNumberInput.value = service.avisoNumber || '';
+        }
+        
         // Cargar NIT/CC - buscar en clientNit, nit, o en el cliente asociado
         let clientNit = service.clientNit || service.nit || '';
         if (!clientNit && service.clientName) {
@@ -995,6 +1001,7 @@ function initProgressModal(type, total) {
     
     // Ocultar botones
     closeBtn.classList.add('d-none');
+    doneBtn.classList.add('d-none');
     doneBtn.style.display = 'none';
     
     // Mostrar el modal
@@ -1049,7 +1056,16 @@ function completeProgress(type, totalProcessed, message, successes, warnings, er
     
     // Mostrar botones
     closeBtn.classList.remove('d-none');
+    doneBtn.classList.remove('d-none');
     doneBtn.style.display = 'block';
+    doneBtn.style.visibility = 'visible';
+    
+    // Asegurar que el modal-footer sea visible
+    const modalFooter = doneBtn.closest('.modal-footer');
+    if (modalFooter) {
+        modalFooter.style.display = 'flex';
+        modalFooter.style.visibility = 'visible';
+    }
     
     // Actualizar contadores finales
     document.getElementById('progress-successes').textContent = successes;
@@ -2774,6 +2790,7 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
     let finalizationOrCancellationLocation = null;
     let startTime = null;
     let startLocation = null;
+    let avisoNumber = null;
 
     if (serviceId) {
         const existingService = services.find(s => s.id === serviceId);
@@ -2784,6 +2801,7 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
             finalizationOrCancellationLocation = existingService.finalizationOrCancellationLocation || null;
             startTime = existingService.startTime || null;
             startLocation = existingService.startLocation || null;
+            avisoNumber = existingService.avisoNumber || null;
 
 
             // Campo de técnico eliminado - ya no se usa
@@ -2885,6 +2903,10 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
         // Usar el serviceCode capturado antes de cerrar el modal, o intentar obtenerlo del DOM
         const serviceCode = serviceCodeValue || (document.getElementById('service-code') ? document.getElementById('service-code').value : '');
         
+        // Obtener el número de aviso del campo de entrada o preservar el existente
+        const avisoNumberInput = document.getElementById('service-aviso-number');
+        const avisoNumberValue = avisoNumberInput ? (avisoNumberInput.value.trim() || null) : avisoNumber;
+        
         const newService = {
             id: finalId,
             date,
@@ -2908,7 +2930,8 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
             finalizationOrCancellationTime: finalizationOrCancellationTime,
             finalizationOrCancellationLocation: finalizationOrCancellationLocation,
             quantity: quantity || 1,
-            additionalServices: additionalServices || []
+            additionalServices: additionalServices || [],
+            avisoNumber: avisoNumberValue
         };
         // Guardar el estado anterior antes de actualizar (para notificaciones)
         let oldStatus = null;
@@ -2978,6 +3001,9 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
         
         const serviceClientEmail = document.getElementById('service-client-email');
         if (serviceClientEmail) serviceClientEmail.value = '';
+        
+        const serviceAvisoNumber = document.getElementById('service-aviso-number');
+        if (serviceAvisoNumber) serviceAvisoNumber.value = '';
         
         const serviceStatus = document.getElementById('service-status');
         if (serviceStatus) serviceStatus.value = 'Pendiente';
@@ -3423,6 +3449,7 @@ function viewServiceDetails(id) {
                                 <div class="col-md-6">
                                     <div class="mb-3"><strong>ID Servicio:</strong><br>${service.id}</div>
                                     ${service.serviceCode ? `<div class="mb-3"><strong>Código de Servicio:</strong><br>${service.serviceCode}</div>` : ''}
+                                    ${service.avisoNumber ? `<div class="mb-3"><strong># de Aviso:</strong><br>${service.avisoNumber}</div>` : ''}
                                     <div class="mb-3"><strong>Tipo de Servicio:</strong><br>${service.safeType || '-'}</div>
                                     <div class="mb-3"><strong>Cantidad:</strong><br>${service.quantity || 1}</div>
                                 </div>
@@ -4404,6 +4431,9 @@ function renderAssignedServicesList(page = 1) {
                     <button class="btn btn-info btn-sm" onclick="viewServiceDetails('${service.id}')" title="Ver detalles" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
                         <i class="bi bi-eye-fill"></i>
                     </button>
+                    <button class="btn btn-warning btn-sm" onclick="openAvisoNumberModal('${service.id}')" title="Agregar # de Aviso" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-tag-fill"></i>
+                    </button>
                     ${canUnassign ? `<button class="btn btn-secondary btn-sm" onclick="unassignService('${service.id}')" title="Desasignar" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
                         <i class="bi bi-person-x-fill"></i>
                     </button>` : ''}
@@ -4492,6 +4522,9 @@ function renderAssignedServicesList(page = 1) {
                     <button class="btn btn-info btn-sm me-1" onclick="viewServiceDetails('${service.id}')" title="Ver detalles" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
                         <i class="bi bi-eye-fill"></i>
                     </button>
+                    <button class="btn btn-warning btn-sm me-1" onclick="openAvisoNumberModal('${service.id}')" title="Agregar # de Aviso" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-tag-fill"></i>
+                    </button>
                     ${canUnassign ? `<button class="btn btn-secondary btn-sm" onclick="unassignService('${service.id}')" title="Desasignar" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;">
                         <i class="bi bi-person-x-fill"></i>
                     </button>` : ''}
@@ -4517,6 +4550,63 @@ function renderAssignedServicesList(page = 1) {
     
     generatePaginationControls(page, totalPages, 'assigned-services-pagination', renderAssignedServicesList);
 }
+
+function openAvisoNumberModal(serviceId) {
+    const service = services.find(s => s.id === serviceId);
+    if (!service) {
+        showAlert('Servicio no encontrado.');
+        return;
+    }
+    
+    // Cargar el valor actual del # de aviso si existe
+    const avisoInput = document.getElementById('aviso-number-input');
+    if (avisoInput) {
+        avisoInput.value = service.avisoNumber || '';
+    }
+    
+    // Guardar el ID del servicio en un atributo del modal para usarlo al guardar
+    const modal = document.getElementById('avisoNumberModal');
+    if (modal) {
+        modal.setAttribute('data-service-id', serviceId);
+    }
+    
+    // Mostrar el modal
+    const bootstrapModal = new bootstrap.Modal(document.getElementById('avisoNumberModal'));
+    bootstrapModal.show();
+}
+
+// Función para guardar el # de aviso
+function saveAvisoNumber() {
+    const modal = document.getElementById('avisoNumberModal');
+    if (!modal) return;
+    
+    const serviceId = modal.getAttribute('data-service-id');
+    if (!serviceId) return;
+    
+    const avisoInput = document.getElementById('aviso-number-input');
+    if (!avisoInput) return;
+    
+    const avisoNumber = avisoInput.value.trim();
+    
+    const serviceIndex = services.findIndex(s => s.id === serviceId);
+    if (serviceIndex !== -1) {
+        services[serviceIndex].avisoNumber = avisoNumber || null;
+        saveServices();
+        
+        // Actualizar las listas
+        renderAssignedServicesList(1);
+        renderAdminServicesList(services, 1);
+        
+        // Cerrar el modal
+        const bootstrapModal = bootstrap.Modal.getInstance(modal);
+        if (bootstrapModal) {
+            bootstrapModal.hide();
+        }
+        
+        showAlert(avisoNumber ? `# de Aviso "${avisoNumber}" guardado correctamente.` : '# de Aviso eliminado correctamente.');
+    }
+}
+
 
 function unassignService(serviceId) {
     showConfirm('¿Estás seguro de que quieres desasignar este servicio?', (result) => {
@@ -5113,7 +5203,8 @@ function openServiceFinalizationModal(serviceId) {
                     'service-client-email',
                     'service-status',
                     'service-quantity',
-                    'service-time'
+                    'service-time',
+                    'service-aviso-number'
                 ];
                 
                 elementsToEnable.forEach(elementId => {
@@ -7514,6 +7605,13 @@ function generatePDFContent(doc, remision) {
     doc.text(horaServicio || 'N/A', 60, yPos);
     yPos += 10;
     
+    // # de Aviso (si existe)
+    if (service?.avisoNumber) {
+        doc.text('# de Aviso:', 20, yPos);
+        doc.text(service.avisoNumber, 60, yPos);
+        yPos += 10;
+    }
+    
     // Total de Servicios - Título con tamaño original
     doc.text('Total de Servicios:', 20, yPos);
     yPos += 8;
@@ -7911,6 +8009,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // Agregar event listener para el botón de guardar # de aviso
+        const confirmAvisoBtn = document.getElementById('confirmAvisoNumberBtn');
+        if (confirmAvisoBtn) {
+            confirmAvisoBtn.addEventListener('click', saveAvisoNumber);
+        }
+        
         registerServiceModalElement.addEventListener('hidden.bs.modal', () => {
             // Resetear el formulario completamente
             document.getElementById('service-form').reset();
@@ -7926,6 +8030,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('service-location').value = '';
             document.getElementById('service-client-phone').value = '';
             document.getElementById('service-client-email').value = '';
+            const serviceAvisoNumberReset = document.getElementById('service-aviso-number');
+            if (serviceAvisoNumberReset) serviceAvisoNumberReset.value = '';
             document.getElementById('service-status').value = 'Pendiente';
             document.getElementById('registerServiceModalLabel').textContent = 'Registrar Servicio';
             

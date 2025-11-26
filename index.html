@@ -1033,6 +1033,14 @@
                             </div>
                         </div>
                         
+                        <!-- Fila de número de aviso -->
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="service-aviso-number" class="form-label fw-bold"># DE AVISO</label>
+                                <input type="text" class="form-control" id="service-aviso-number" placeholder="Ej: AV-12345">
+                            </div>
+                        </div>
+                        
                         <!-- Segunda fila: TIPO DE SERVICIO, DESCRIPCIÓN (más grande), CANTIDAD (más pequeño) -->
                         <div class="row">
                             <div class="col-md-4 mb-3">
@@ -1288,6 +1296,29 @@
         </div>
     </div>
 
+    <!-- Modal para agregar # de aviso -->
+    <div class="modal fade" id="avisoNumberModal" tabindex="-1" aria-labelledby="avisoNumberModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #1e40af; color: white;">
+                    <h5 class="modal-title fw-bold" id="avisoNumberModalLabel">Agregar # de Aviso</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Ingresa el número de aviso para este servicio (opcional).</p>
+                    <div class="mb-3">
+                        <label for="aviso-number-input" class="form-label"># de Aviso:</label>
+                        <input type="text" class="form-control" id="aviso-number-input" placeholder="Ej: AV-12345">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="confirmAvisoNumberBtn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Input oculto para importar archivos -->
     <input type="file" id="import-services-file" accept=".xlsx,.xls" style="display: none;">
     <input type="file" id="import-costo-servicios-file" accept=".xlsx,.xls" style="display: none;">
@@ -1338,7 +1369,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="progress-done-btn" data-bs-dismiss="modal" style="display: none;">HECHO</button>
+                    <button type="button" class="btn btn-secondary d-none" id="progress-done-btn" data-bs-dismiss="modal">HECHO</button>
                 </div>
             </div>
         </div>
