@@ -2756,6 +2756,12 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
                 window.globalGeolocation = new EnhancedGeolocation();
             }
             
+            // Cerrar el modal de finalización antes de obtener la ubicación (igual que startService)
+            const finalizationModal = bootstrap.Modal.getInstance(document.getElementById('registerServiceModal'));
+            if (finalizationModal) {
+                finalizationModal.hide();
+            }
+            
             // Mostrar mensaje de carga
             showAlert('🌍 Obteniendo ubicación para finalizar servicio...\n\nPor favor espera mientras obtenemos tu ubicación GPS.');
             
