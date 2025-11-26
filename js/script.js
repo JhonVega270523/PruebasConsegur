@@ -359,6 +359,9 @@ function generatePaginationControls(currentPage, totalPages, containerId, onPage
     
     if (totalPages <= 1) return;
     
+    // Detectar si estamos en móvil
+    const isMobile = window.innerWidth <= 768;
+    
     const paginationContainer = document.createElement('div');
     paginationContainer.className = 'd-flex justify-content-center align-items-center mt-3';
     
@@ -369,7 +372,12 @@ function generatePaginationControls(currentPage, totalPages, containerId, onPage
     // Botón anterior
     const prevButton = document.createElement('button');
     prevButton.className = `btn btn-outline-primary btn-sm ${currentPage === 1 ? 'disabled' : ''}`;
-    prevButton.innerHTML = '‹ ANTERIOR';
+    if (isMobile) {
+        prevButton.innerHTML = '<i class="bi bi-chevron-left"></i>';
+        prevButton.setAttribute('aria-label', 'Página anterior');
+    } else {
+        prevButton.innerHTML = '‹ ANTERIOR';
+    }
     prevButton.onclick = () => {
         if (currentPage > 1) {
             onPageChange(currentPage - 1);
@@ -380,7 +388,7 @@ function generatePaginationControls(currentPage, totalPages, containerId, onPage
     const pageButtonsContainer = document.createElement('div');
     pageButtonsContainer.className = 'd-flex gap-1';
     
-    const maxVisiblePages = 5;
+    const maxVisiblePages = isMobile ? 3 : 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
     
@@ -399,7 +407,12 @@ function generatePaginationControls(currentPage, totalPages, containerId, onPage
     // Botón siguiente
     const nextButton = document.createElement('button');
     nextButton.className = `btn btn-outline-primary btn-sm ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextButton.innerHTML = 'SIGUIENTE ›';
+    if (isMobile) {
+        nextButton.innerHTML = '<i class="bi bi-chevron-right"></i>';
+        nextButton.setAttribute('aria-label', 'Página siguiente');
+    } else {
+        nextButton.innerHTML = 'SIGUIENTE ›';
+    }
     nextButton.onclick = () => {
         if (currentPage < totalPages) {
             onPageChange(currentPage + 1);
@@ -1825,10 +1838,12 @@ function renderClientList(page = 1, clientsToRender = null) {
     if (!clientListElement) return;
     
     const clientTable = clientListElement.closest('table');
+    const clientCardsElement = document.getElementById('client-list-cards');
     
     const clientsToDisplay = clientsToRender || filteredClients.length > 0 ? filteredClients : clients;
     
     clientListElement.innerHTML = '';
+    if (clientCardsElement) clientCardsElement.innerHTML = '';
     
     const totalPages = getTotalPages(clientsToDisplay.length, ITEMS_PER_PAGE_CLIENTS);
     const paginatedClients = paginateArray(clientsToDisplay, page, ITEMS_PER_PAGE_CLIENTS);
@@ -1843,6 +1858,17 @@ function renderClientList(page = 1, clientsToRender = null) {
             </td>
         `;
         clientListElement.appendChild(noResultsRow);
+        
+        if (clientCardsElement) {
+            const noResultsCard = document.createElement('div');
+            noResultsCard.className = 'text-center text-muted py-4';
+            noResultsCard.innerHTML = `
+                <i class="bi bi-people" style="font-size: 2rem;"></i>
+                <br><br>
+                <strong>No hay clientes registrados</strong>
+            `;
+            clientCardsElement.appendChild(noResultsCard);
+        }
     } else {
         paginatedClients.forEach((client, index) => {
             let createdAt = 'N/A';
@@ -1861,6 +1887,7 @@ function renderClientList(page = 1, clientsToRender = null) {
             
             const rowNumber = (page - 1) * ITEMS_PER_PAGE_CLIENTS + index + 1;
             
+            // Generar fila de tabla (vista desktop)
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${rowNumber}</td>
@@ -1881,6 +1908,35 @@ function renderClientList(page = 1, clientsToRender = null) {
                 </td>
             `;
             clientListElement.appendChild(row);
+            
+            // Generar tarjeta móvil (vista móvil)
+            if (clientCardsElement) {
+                const clientCard = document.createElement('div');
+                clientCard.className = 'user-card client-card';
+                clientCard.innerHTML = `
+                    <div class="user-card-header">
+                        <span class="user-card-username">${client.name || ''}</span>
+                    </div>
+                    <div class="user-card-info">
+                        <div class="client-id-field"><strong>ID:</strong> ${client.id || ''}</div>
+                        <div><strong>NIT/CC:</strong> ${client.nit || ''}</div>
+                        <div><strong>Dirección:</strong> ${client.address || ''}</div>
+                        <div><strong>Teléfono:</strong> ${client.phone || ''}</div>
+                        <div><strong>Email:</strong> ${client.email || ''}</div>
+                        <div><strong>Consecutivo:</strong> ${client.consecutive || ''}</div>
+                        <div><strong>Fecha de creación:</strong> ${createdAt}</div>
+                    </div>
+                    <div class="user-card-actions">
+                        <button class="btn btn-warning btn-sm me-1" onclick="editClient('${client.id}')" title="Editar">
+                            <i class="bi bi-pencil-fill"></i> Editar
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteClient('${client.id}')" title="Eliminar">
+                            <i class="bi bi-trash-fill"></i> Eliminar
+                        </button>
+                    </div>
+                `;
+                clientCardsElement.appendChild(clientCard);
+            }
         });
     }
     
@@ -2497,11 +2553,19 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
                 <div class="service-card-info">
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Fecha:</span>
-                        <span class="service-card-info-value">${service.date}</span>
+                        <span class="service-card-info-value">${serviceDate}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">Hora:</span>
+                        <span class="service-card-info-value">${serviceTime}</span>
                     </div>
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Cliente:</span>
                         <span class="service-card-info-value">${service.clientName}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">Código Servicio:</span>
+                        <span class="service-card-info-value">${service.serviceCode || '-'}</span>
                     </div>
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Tipo Servicio:</span>
@@ -4409,7 +4473,11 @@ function renderAssignedServicesList(page = 1) {
                 <div class="service-card-info">
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Fecha:</span>
-                        <span class="service-card-info-value">${service.date}</span>
+                        <span class="service-card-info-value">${formattedDate}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">Hora:</span>
+                        <span class="service-card-info-value">${serviceTime}</span>
                     </div>
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Cliente:</span>
@@ -4809,7 +4877,19 @@ function renderEmployeeAssignedServices(page = 1) {
                 <div class="service-card-info">
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Fecha:</span>
-                        <span class="service-card-info-value">${service.date}</span>
+                        <span class="service-card-info-value">${formattedDate}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">Hora:</span>
+                        <span class="service-card-info-value">${serviceTime}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">Cliente:</span>
+                        <span class="service-card-info-value">${service.clientName}</span>
+                    </div>
+                    <div class="service-card-info-item">
+                        <span class="service-card-info-label">Código Servicio:</span>
+                        <span class="service-card-info-value">${service.serviceCode || '-'}</span>
                     </div>
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Tipo Servicio:</span>
@@ -4822,10 +4902,6 @@ function renderEmployeeAssignedServices(page = 1) {
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Técnico:</span>
                         <span class="service-card-info-value">${getTechnicianNameById(service.technicianId)}</span>
-                    </div>
-                    <div class="service-card-info-item">
-                        <span class="service-card-info-label">Cliente:</span>
-                        <span class="service-card-info-value">${service.clientName}</span>
                     </div>
                     <div class="service-card-info-item">
                         <span class="service-card-info-label">Teléfono:</span>
