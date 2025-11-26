@@ -2860,10 +2860,17 @@ input[type="number"] {
         text-indent: -9999px !important;
         overflow: hidden !important;
         white-space: nowrap !important;
+        font-size: 0 !important;
     }
     
     .service-card-actions .btn:not(.dropdown-toggle) i {
         text-indent: 0 !important;
+        font-size: 1.2rem !important;
+    }
+    
+    /* Ocultar texto directamente usando span o texto que no sea icono */
+    .service-card-actions .btn:not(.dropdown-toggle) > *:not(i) {
+        display: none !important;
     }
     
     /* Nota: Los botones sin iconos quedarán ocultos por el text-indent */

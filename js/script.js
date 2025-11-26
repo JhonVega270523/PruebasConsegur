@@ -2581,7 +2581,7 @@ function renderAdminServicesList(filteredServices = services, page = 1) {
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-info btn-sm me-1" onclick="viewServiceDetails('${service.id}')">
+                    <button class="btn btn-info btn-sm me-1" onclick="viewServiceDetails('${service.id}')" title="Ver detalles">
                         <i class="bi bi-eye-fill"></i> Ver
                     </button>
                     ${editButton}
@@ -4909,7 +4909,7 @@ function renderEmployeeAssignedServices(page = 1) {
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-info btn-sm me-1" onclick="viewServiceDetails('${service.id}')">
+                    <button class="btn btn-info btn-sm me-1" onclick="viewServiceDetails('${service.id}')" title="Ver detalles">
                         <i class="bi bi-eye-fill"></i> Ver
                     </button>
                     <div class="dropdown d-inline-block">
@@ -4923,8 +4923,8 @@ function renderEmployeeAssignedServices(page = 1) {
                             <li><a class="dropdown-item ${isStatusFixed ? 'disabled' : ''}" href="#" onclick="if(!${isStatusFixed}) handleEmployeeServiceStatusChange('${service.id}', 'Cancelado')">Cancelado</a></li>
                         </ul>
                     </div>
-                    ${showStartButton ? `<button class="btn btn-success btn-sm" onclick="startService('${service.id}')">Iniciar</button>` : ''}
-                    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#reportNoveltyModal" onclick="prefillNoveltyServiceId('${service.id}')">Novedad</button>
+                    ${showStartButton ? `<button class="btn btn-success btn-sm" onclick="startService('${service.id}')" title="Iniciar servicio"><i class="bi bi-play-fill"></i> Iniciar</button>` : ''}
+                    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#reportNoveltyModal" onclick="prefillNoveltyServiceId('${service.id}')" title="Reportar novedad"><i class="bi bi-exclamation-triangle-fill"></i> Novedad</button>
                 </div>
             `;
             employeeServicesCards.appendChild(serviceCard);
@@ -5909,10 +5909,10 @@ function renderCostoServiciosList(filteredCostoServicios = costoServicios, page 
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-warning btn-sm me-1" onclick="editCostoServicio('${servicio.id}')">
+                    <button class="btn btn-warning btn-sm me-1" onclick="editCostoServicio('${servicio.id}')" title="Editar">
                         <i class="bi bi-pencil-fill"></i> Editar
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteCostoServicio('${servicio.id}')">
+                    <button class="btn btn-danger btn-sm" onclick="deleteCostoServicio('${servicio.id}')" title="Eliminar">
                         <i class="bi bi-trash-fill"></i> Eliminar
                     </button>
                 </div>
@@ -6757,10 +6757,10 @@ function renderRemisionesList(filteredRemisiones = remisiones) {
                     </div>
                 </div>
                 <div class="service-card-actions">
-                    <button class="btn btn-primary btn-sm me-1" onclick="downloadRemisionPDF('${remision.id}')">
-                        <i class="bi bi-person"></i> Ver
+                    <button class="btn btn-primary btn-sm me-1" onclick="downloadRemisionPDF('${remision.id}')" title="Ver/Descargar PDF">
+                        <i class="bi bi-file-earmark-pdf"></i> Ver
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteRemision('${remision.id}')">
+                    <button class="btn btn-danger btn-sm" onclick="deleteRemision('${remision.id}')" title="Eliminar">
                         <i class="bi bi-trash-fill"></i> Eliminar
                     </button>
                 </div>
