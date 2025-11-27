@@ -2838,19 +2838,52 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
 
             // Record finalization/cancellation time and location
         if ((status === 'Finalizado' || status === 'Cancelado') && currentUser.role === 'employee') {
-            const options = {
-                enableHighAccuracy: true,  // Solicitar la mejor precisión disponible
-                timeout: 30000,           // Timeout de 30 segundos
-                maximumAge: 0             // No usar ubicación en caché, obtener ubicación fresca
+            // IMPORTANTE: Capturar TODOS los datos del formulario ANTES de cerrar el modal
+            // Esto es crítico para móviles donde el modal puede interferir con la geolocalización
+            const serviceCodeValue = document.getElementById('service-code') ? document.getElementById('service-code').value : '';
+            
+            // Capturar firmas ANTES de cerrar el modal (pueden perderse después)
+            let capturedClientSignature = clientSignatureData;
+            let capturedTechnicianSignature = technicianSignatureData;
+            
+            // Si las firmas no se capturaron antes, intentar capturarlas ahora
+            if (!capturedClientSignature && signaturePadClient && !signaturePadClient.isEmpty()) {
+                capturedClientSignature = signaturePadClient.toDataURL();
+            }
+            if (!capturedTechnicianSignature && signaturePadTechnician && !signaturePadTechnician.isEmpty()) {
+                capturedTechnicianSignature = signaturePadTechnician.toDataURL();
+            }
+            
+            // Guardar los datos capturados en variables que persistan después del cierre del modal
+            const capturedData = {
+                serviceId: serviceId,
+                date: date,
+                time: time,
+                safeType: safeType,
+                description: description,
+                location: location,
+                clientName: clientName,
+                clientPhone: clientPhone,
+                clientNit: clientNit,
+                clientEmail: clientEmail,
+                status: status,
+                photoData: photoData,
+                quantity: quantity,
+                additionalServices: additionalServices,
+                clientSignature: capturedClientSignature,
+                technicianSignature: capturedTechnicianSignature,
+                serviceCode: serviceCodeValue,
+                currentTechnicianId: currentTechnicianId,
+                cancellationReason: cancellationReason,
+                startTime: startTime,
+                startLocation: startLocation,
+                avisoNumber: avisoNumber
             };
-
+            
             // Usar la instancia global de geolocalización
             if (!window.globalGeolocation) {
                 window.globalGeolocation = new EnhancedGeolocation();
             }
-            
-            // Capturar valores del formulario ANTES de cerrar el modal (importante para móvil)
-            const serviceCodeValue = document.getElementById('service-code') ? document.getElementById('service-code').value : '';
             
             // Función auxiliar para obtener ubicación y guardar
             const getLocationAndSave = () => {
@@ -2860,6 +2893,7 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
                 window.globalGeolocation.getQuickLocation(
                     (locationData) => {
                         // Éxito: ubicación obtenida
+                        // Usar los datos capturados antes de cerrar el modal
                         finalizationOrCancellationTime = locationData.timestamp;
                         finalizationOrCancellationLocation = {
                             latitude: locationData.latitude,
@@ -2874,8 +2908,13 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
                             deviceInfo: locationData.deviceInfo,
                             context: locationData.context
                         };
-                        // Proceder a guardar una vez obtenida la ubicación
-                        finalizeServiceSave(serviceCodeValue);
+                        
+                        // Guardar las firmas capturadas en las variables globales para que finalizeServiceSave las use
+                        clientSignatureData = capturedData.clientSignature;
+                        technicianSignatureData = capturedData.technicianSignature;
+                        
+                        // Proceder a guardar una vez obtenida la ubicación con todos los datos capturados
+                        finalizeServiceSave(capturedData.serviceCode);
                     },
                     (error) => {
                         // Error: mostrar mensaje específico
@@ -2895,15 +2934,18 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
                     modalElement.addEventListener('hidden.bs.modal', function onModalHidden() {
                         modalElement.removeEventListener('hidden.bs.modal', onModalHidden);
                         // Esperar un pequeño delay para asegurar que el modal se cerró completamente
+                        // Aumentar el delay en móviles para mayor estabilidad
+                        const delay = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 500 : 300;
                         setTimeout(() => {
                             getLocationAndSave();
-                        }, 300);
+                        }, delay);
                     }, { once: true });
                 } else {
                     // Si no hay elemento modal, proceder directamente después de un pequeño delay
+                    const delay = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 500 : 300;
                     setTimeout(() => {
                         getLocationAndSave();
-                    }, 300);
+                    }, delay);
                 }
             } else {
                 // Si no hay modal que cerrar, proceder directamente
