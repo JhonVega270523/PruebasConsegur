@@ -1059,12 +1059,16 @@ function completeProgress(type, totalProcessed, message, successes, warnings, er
     doneBtn.classList.remove('d-none');
     doneBtn.style.display = 'block';
     doneBtn.style.visibility = 'visible';
+    doneBtn.style.opacity = '1';
+    doneBtn.removeAttribute('hidden');
     
     // Asegurar que el modal-footer sea visible
     const modalFooter = doneBtn.closest('.modal-footer');
     if (modalFooter) {
         modalFooter.style.display = 'flex';
         modalFooter.style.visibility = 'visible';
+        modalFooter.style.opacity = '1';
+        modalFooter.classList.remove('d-none');
     }
     
     // Actualizar contadores finales
@@ -1856,7 +1860,7 @@ function renderClientList(page = 1, clientsToRender = null) {
     const clientTable = clientListElement.closest('table');
     const clientCardsElement = document.getElementById('client-list-cards');
     
-    const clientsToDisplay = clientsToRender || filteredClients.length > 0 ? filteredClients : clients;
+    const clientsToDisplay = clientsToRender || (filteredClients.length > 0 ? filteredClients : clients);
     
     clientListElement.innerHTML = '';
     if (clientCardsElement) clientCardsElement.innerHTML = '';
@@ -2271,6 +2275,8 @@ if (document.getElementById('import-clients-file')) {
                         if (importedClients.length > 0) {
                             clients.push(...importedClients);
                             saveClients();
+                            // Limpiar filtros para mostrar todos los clientes incluyendo los nuevos
+                            filteredClients = [];
                             renderClientList(1);
                         }
                         
