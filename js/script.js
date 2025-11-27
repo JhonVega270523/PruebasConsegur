@@ -2887,38 +2887,104 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
             
             // Función auxiliar para obtener ubicación y guardar
             const getLocationAndSave = () => {
-                // Mostrar mensaje de carga
-                showAlert('🌍 Obteniendo ubicación para finalizar servicio...\n\nPor favor espera mientras obtenemos tu ubicación GPS.');
+                // Verificar que no haya solicitudes de geolocalización pendientes
+                if (window.globalGeolocation && window.globalGeolocation.isRequesting) {
+                    // Si hay una solicitud pendiente, esperar un momento y reintentar
+                    setTimeout(() => {
+                        getLocationAndSave();
+                    }, 1000);
+                    return;
+                }
+                
+                // NO mostrar el alert inmediatamente - esperar a que la geolocalización realmente comience
+                // Esto evita conflictos con modales en móviles
+                let alertShown = false;
+                const showLocationAlert = () => {
+                    if (!alertShown) {
+                        alertShown = true;
+                        showAlert('🌍 Obteniendo ubicación para finalizar servicio...\n\nPor favor espera mientras obtenemos tu ubicación GPS.');
+                    }
+                };
+                
+                // Iniciar la geolocalización inmediatamente sin mostrar alert primero
+                // El alert se mostrará después de un pequeño delay solo si la solicitud tarda
+                const alertTimeout = setTimeout(() => {
+                    showLocationAlert();
+                }, 500);
+                
+                // Timeout de seguridad: si después de 35 segundos no hay respuesta, mostrar error
+                const safetyTimeout = setTimeout(() => {
+                    clearTimeout(alertTimeout);
+                    if (alertShown) {
+                        const alertModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                        if (alertModal) {
+                            alertModal.hide();
+                        }
+                    }
+                    setTimeout(() => {
+                        showAlert('❌ Tiempo de espera agotado al obtener la ubicación.\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS\n• Intenta recargar la página y finalizar nuevamente');
+                    }, 300);
+                }, 35000); // 35 segundos de timeout de seguridad
                 
                 window.globalGeolocation.getQuickLocation(
                     (locationData) => {
-                        // Éxito: ubicación obtenida
-                        // Usar los datos capturados antes de cerrar el modal
-                        finalizationOrCancellationTime = locationData.timestamp;
-                        finalizationOrCancellationLocation = {
-                            latitude: locationData.latitude,
-                            longitude: locationData.longitude,
-                            accuracy: locationData.accuracy,
-                            timestamp: locationData.timestamp,
-                            altitude: locationData.altitude,
-                            heading: locationData.heading,
-                            speed: locationData.speed,
-                            altitudeAccuracy: locationData.altitudeAccuracy,
-                            browser: locationData.browser,
-                            deviceInfo: locationData.deviceInfo,
-                            context: locationData.context
-                        };
+                        // Limpiar todos los timeouts
+                        clearTimeout(alertTimeout);
+                        clearTimeout(safetyTimeout);
                         
-                        // Guardar las firmas capturadas en las variables globales para que finalizeServiceSave las use
-                        clientSignatureData = capturedData.clientSignature;
-                        technicianSignatureData = capturedData.technicianSignature;
+                        // Cerrar el alert si se mostró
+                        if (alertShown) {
+                            const alertModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                            if (alertModal) {
+                                alertModal.hide();
+                            }
+                        }
                         
-                        // Proceder a guardar una vez obtenida la ubicación con todos los datos capturados
-                        finalizeServiceSave(capturedData.serviceCode);
+                        // Pequeño delay para asegurar que el alert se cerró antes de continuar
+                        setTimeout(() => {
+                            // Éxito: ubicación obtenida
+                            // Usar los datos capturados antes de cerrar el modal
+                            finalizationOrCancellationTime = locationData.timestamp;
+                            finalizationOrCancellationLocation = {
+                                latitude: locationData.latitude,
+                                longitude: locationData.longitude,
+                                accuracy: locationData.accuracy,
+                                timestamp: locationData.timestamp,
+                                altitude: locationData.altitude,
+                                heading: locationData.heading,
+                                speed: locationData.speed,
+                                altitudeAccuracy: locationData.altitudeAccuracy,
+                                browser: locationData.browser,
+                                deviceInfo: locationData.deviceInfo,
+                                context: locationData.context
+                            };
+                            
+                            // Guardar las firmas capturadas en las variables globales para que finalizeServiceSave las use
+                            clientSignatureData = capturedData.clientSignature;
+                            technicianSignatureData = capturedData.technicianSignature;
+                            
+                            // Proceder a guardar una vez obtenida la ubicación con todos los datos capturados
+                            finalizeServiceSave(capturedData.serviceCode);
+                        }, alertShown ? 300 : 0);
                     },
                     (error) => {
-                        // Error: mostrar mensaje específico
-                        showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
+                        // Limpiar todos los timeouts
+                        clearTimeout(alertTimeout);
+                        clearTimeout(safetyTimeout);
+                        
+                        // Cerrar el alert de "obteniendo ubicación" si se mostró
+                        if (alertShown) {
+                            const alertModal = bootstrap.Modal.getInstance(document.getElementById('customAlertModal'));
+                            if (alertModal) {
+                                alertModal.hide();
+                            }
+                        }
+                        
+                        // Pequeño delay antes de mostrar el error para asegurar que el alert anterior se cerró
+                        setTimeout(() => {
+                            // Error: mostrar mensaje específico
+                            showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
+                        }, alertShown ? 300 : 0);
                     },
                     'finalizacion_servicio'
                 );
@@ -2933,23 +2999,27 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
                 if (modalElement) {
                     modalElement.addEventListener('hidden.bs.modal', function onModalHidden() {
                         modalElement.removeEventListener('hidden.bs.modal', onModalHidden);
-                        // Esperar un pequeño delay para asegurar que el modal se cerró completamente
-                        // Aumentar el delay en móviles para mayor estabilidad
-                        const delay = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 500 : 300;
+                        // Esperar un delay más largo en móviles para asegurar que el modal se cerró completamente
+                        // y que no hay animaciones o transiciones pendientes
+                        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                        const delay = isMobile ? 1000 : 500; // 1 segundo en móviles, 500ms en escritorio
                         setTimeout(() => {
                             getLocationAndSave();
                         }, delay);
                     }, { once: true });
                 } else {
-                    // Si no hay elemento modal, proceder directamente después de un pequeño delay
-                    const delay = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 500 : 300;
+                    // Si no hay elemento modal, proceder directamente después de un delay
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    const delay = isMobile ? 1000 : 500;
                     setTimeout(() => {
                         getLocationAndSave();
                     }, delay);
                 }
             } else {
-                // Si no hay modal que cerrar, proceder directamente
-                getLocationAndSave();
+                // Si no hay modal que cerrar, proceder directamente después de un pequeño delay
+                setTimeout(() => {
+                    getLocationAndSave();
+                }, 300);
             }
         } else {
             // Capturar serviceCode antes de guardar (por si acaso)
