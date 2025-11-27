@@ -968,8 +968,11 @@ function showConfirm(message, callback) {
 
 // --- Funciones para el modal de progreso ---
 let progressModalInstance = null;
+let pendingClientRender = false; // Flag para saber si necesitamos renderizar clientes después de cerrar el modal
 
 function initProgressModal(type, total) {
+    // Resetear flag al inicializar
+    pendingClientRender = false;
     // Obtener o crear instancia del modal
     progressModalInstance = bootstrap.Modal.getInstance(document.getElementById('progressModal'));
     if (!progressModalInstance) {
@@ -982,6 +985,7 @@ function initProgressModal(type, total) {
     const closeBtn = document.getElementById('progress-close-btn');
     const doneBtn = document.getElementById('progress-done-btn');
     const progressBar = document.getElementById('progress-bar');
+    const progressModalElement = document.getElementById('progressModal');
     
     if (type === 'import') {
         titleEl.textContent = 'Importando registros...';
@@ -1003,6 +1007,28 @@ function initProgressModal(type, total) {
     closeBtn.classList.add('d-none');
     doneBtn.classList.add('d-none');
     doneBtn.style.display = 'none';
+    
+    // Agregar listener para cuando se cierre el modal (especialmente para Chrome móvil)
+    const handleModalHidden = function() {
+        if (pendingClientRender) {
+            // Forzar re-render de clientes después de que el modal se cierre
+            setTimeout(() => {
+                filteredClients = [];
+                const searchInput = document.getElementById('search-clients');
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                renderClientList(1, null);
+                pendingClientRender = false;
+            }, 150); // Delay para asegurar que Chrome móvil procese el cierre del modal
+        }
+        progressModalElement.removeEventListener('hidden.bs.modal', handleModalHidden);
+    };
+    
+    // Remover listener anterior si existe
+    progressModalElement.removeEventListener('hidden.bs.modal', handleModalHidden);
+    // Agregar nuevo listener
+    progressModalElement.addEventListener('hidden.bs.modal', handleModalHidden);
     
     // Mostrar el modal
     progressModalInstance.show();
@@ -2280,14 +2306,14 @@ if (document.getElementById('import-clients-file')) {
                         if (importedClients.length > 0) {
                             clients.push(...importedClients);
                             saveClients();
-                            // Resetear filtros para mostrar todos los clientes incluyendo los nuevos
+                            // Activar flag para renderizar después de cerrar el modal (especialmente para Chrome móvil)
+                            pendingClientRender = true;
+                            // Renderizar inmediatamente también (para Safari y otros navegadores)
                             filteredClients = [];
-                            // Limpiar campo de búsqueda si existe
                             const searchInput = document.getElementById('search-clients');
                             if (searchInput) {
                                 searchInput.value = '';
                             }
-                            // Renderizar lista con todos los clientes
                             renderClientList(1, null);
                         }
                         
