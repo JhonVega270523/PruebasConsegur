@@ -1864,7 +1864,8 @@ function renderClientList(page = 1, clientsToRender = null) {
     const clientTable = clientListElement.closest('table');
     const clientCardsElement = document.getElementById('client-list-cards');
     
-    const clientsToDisplay = clientsToRender || filteredClients.length > 0 ? filteredClients : clients;
+    // Si se pasa clientsToRender explícitamente, usarlo; sino, usar filteredClients si tiene elementos, sino usar clients
+    const clientsToDisplay = clientsToRender !== null ? clientsToRender : (filteredClients.length > 0 ? filteredClients : clients);
     
     clientListElement.innerHTML = '';
     if (clientCardsElement) clientCardsElement.innerHTML = '';
@@ -2279,7 +2280,15 @@ if (document.getElementById('import-clients-file')) {
                         if (importedClients.length > 0) {
                             clients.push(...importedClients);
                             saveClients();
-                            renderClientList(1);
+                            // Resetear filtros para mostrar todos los clientes incluyendo los nuevos
+                            filteredClients = [];
+                            // Limpiar campo de búsqueda si existe
+                            const searchInput = document.getElementById('search-clients');
+                            if (searchInput) {
+                                searchInput.value = '';
+                            }
+                            // Renderizar lista con todos los clientes
+                            renderClientList(1, null);
                         }
                         
                         let finalMessage = '';
