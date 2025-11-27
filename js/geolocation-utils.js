@@ -62,30 +62,55 @@ class EnhancedGeolocation {
             return;
         }
 
+        // Si hay una solicitud en curso, esperar un momento y reintentar
+        if (this.isRequesting) {
+            console.log('⚠️ Ya hay una solicitud de ubicación en curso, esperando...');
+            setTimeout(() => this.getQuickLocation(onSuccess, onError, context), 1000);
+            return;
+        }
+
         // Si tenemos una ubicación en caché válida, usarla inmediatamente
         if (this.canUseCachedLocation()) {
             console.log('⚡ Usando ubicación en caché (instantánea)');
+            this.isRequesting = false; // Asegurar que el flag esté limpio
             onSuccess(this.lastLocation);
             return;
         }
 
         // Si no hay caché, usar configuración optimizada por navegador
+        this.isRequesting = true; // Marcar que estamos solicitando
         console.log(`🚀 Obteniendo ubicación rápida para: ${context}`);
         
         const options = this.getOptimizedOptions('quick');
         console.log('🔧 Opciones optimizadas para navegador:', options);
 
+        // Timeout de seguridad adicional para móviles (por si el timeout del navegador falla)
+        const safetyTimeout = setTimeout(() => {
+            if (this.isRequesting) {
+                console.warn('⚠️ Timeout de seguridad activado, limpiando estado...');
+                this.isRequesting = false;
+                onError({
+                    code: 3,
+                    message: 'Tiempo de espera agotado.',
+                    details: this.getTimeoutInstructions()
+                });
+            }
+        }, options.timeout + 5000); // 5 segundos adicionales después del timeout del navegador
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
+                clearTimeout(safetyTimeout); // Limpiar timeout de seguridad
                 console.log('✅ Ubicación rápida obtenida:', {
                     accuracy: position.coords.accuracy,
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
                     browser: this.browserInfo.name
                 });
-                this.processLocation(position, onSuccess, context);
+                this.processLocation(position, onSuccess, onError, context);
             },
             (error) => {
+                clearTimeout(safetyTimeout); // Limpiar timeout de seguridad
+                this.isRequesting = false; // Asegurar que el flag se resetee en caso de error
                 console.error('❌ Error en ubicación rápida:', error);
                 
                 // Manejar errores específicos con mensajes mejorados
@@ -196,7 +221,7 @@ class EnhancedGeolocation {
                     if (attempts === 1) {
                         if (position.coords.accuracy <= this.accuracyThreshold) {
                             console.log(`🎯 Precisión excelente en primer intento: ${position.coords.accuracy}m`);
-                            this.processLocation(position, onSuccess, context);
+                            this.processLocation(position, onSuccess, onError, context);
                             return;
                         } else {
                             console.log(`📊 Precisión aceptable en primer intento: ${position.coords.accuracy}m, continuando...`);
@@ -207,10 +232,10 @@ class EnhancedGeolocation {
                     if (attempts === 2) {
                         if (position.coords.accuracy < bestAccuracy) {
                             console.log(`🎯 Mejor precisión en segundo intento: ${position.coords.accuracy}m`);
-                            this.processLocation(position, onSuccess, context);
+                            this.processLocation(position, onSuccess, onError, context);
                         } else {
                             console.log(`📊 Usando mejor precisión disponible: ${bestAccuracy}m`);
-                            this.processLocation(bestPosition, onSuccess, context);
+                            this.processLocation(bestPosition, onSuccess, onError, context);
                         }
                         return;
                     }
@@ -218,7 +243,7 @@ class EnhancedGeolocation {
                     // En el tercer intento, aceptar cualquier ubicación
                     if (attempts === 3) {
                         console.log(`🎯 Aceptando ubicación del tercer intento: ${position.coords.accuracy}m`);
-                        this.processLocation(position, onSuccess, context);
+                        this.processLocation(position, onSuccess, onError, context);
                         return;
                     }
                 },
@@ -284,17 +309,20 @@ class EnhancedGeolocation {
     /**
      * Procesa y valida la ubicación obtenida
      */
-    processLocation(position, onSuccess, context) {
+    processLocation(position, onSuccess, onError, context) {
         const coords = position.coords;
         const timestamp = new Date(position.timestamp);
         
         // Validar que las coordenadas sean válidas
         if (!this.isValidCoordinates(coords.latitude, coords.longitude)) {
-            onError({
-                code: 2,
-                message: 'Las coordenadas obtenidas no son válidas.',
-                details: 'Las coordenadas están fuera del rango válido.'
-            });
+            this.isRequesting = false; // Resetear flag en caso de error
+            if (onError) {
+                onError({
+                    code: 2,
+                    message: 'Las coordenadas obtenidas no son válidas.',
+                    details: 'Las coordenadas están fuera del rango válido.'
+                });
+            }
             return;
         }
 

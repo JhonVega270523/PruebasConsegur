@@ -2852,41 +2852,63 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
             // Capturar valores del formulario ANTES de cerrar el modal (importante para móvil)
             const serviceCodeValue = document.getElementById('service-code') ? document.getElementById('service-code').value : '';
             
-            // Cerrar el modal de finalización antes de obtener la ubicación (igual que startService)
+            // Función auxiliar para obtener ubicación y guardar
+            const getLocationAndSave = () => {
+                // Mostrar mensaje de carga
+                showAlert('🌍 Obteniendo ubicación para finalizar servicio...\n\nPor favor espera mientras obtenemos tu ubicación GPS.');
+                
+                window.globalGeolocation.getQuickLocation(
+                    (locationData) => {
+                        // Éxito: ubicación obtenida
+                        finalizationOrCancellationTime = locationData.timestamp;
+                        finalizationOrCancellationLocation = {
+                            latitude: locationData.latitude,
+                            longitude: locationData.longitude,
+                            accuracy: locationData.accuracy,
+                            timestamp: locationData.timestamp,
+                            altitude: locationData.altitude,
+                            heading: locationData.heading,
+                            speed: locationData.speed,
+                            altitudeAccuracy: locationData.altitudeAccuracy,
+                            browser: locationData.browser,
+                            deviceInfo: locationData.deviceInfo,
+                            context: locationData.context
+                        };
+                        // Proceder a guardar una vez obtenida la ubicación
+                        finalizeServiceSave(serviceCodeValue);
+                    },
+                    (error) => {
+                        // Error: mostrar mensaje específico
+                        showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
+                    },
+                    'finalizacion_servicio'
+                );
+            };
+            
+            // Cerrar el modal de finalización antes de obtener la ubicación (importante para móvil)
             const finalizationModal = bootstrap.Modal.getInstance(document.getElementById('registerServiceModal'));
             if (finalizationModal) {
                 finalizationModal.hide();
+                // Esperar a que el modal se cierre completamente antes de continuar (especialmente importante en móvil)
+                const modalElement = document.getElementById('registerServiceModal');
+                if (modalElement) {
+                    modalElement.addEventListener('hidden.bs.modal', function onModalHidden() {
+                        modalElement.removeEventListener('hidden.bs.modal', onModalHidden);
+                        // Esperar un pequeño delay para asegurar que el modal se cerró completamente
+                        setTimeout(() => {
+                            getLocationAndSave();
+                        }, 300);
+                    }, { once: true });
+                } else {
+                    // Si no hay elemento modal, proceder directamente después de un pequeño delay
+                    setTimeout(() => {
+                        getLocationAndSave();
+                    }, 300);
+                }
+            } else {
+                // Si no hay modal que cerrar, proceder directamente
+                getLocationAndSave();
             }
-            
-            // Mostrar mensaje de carga
-            showAlert('🌍 Obteniendo ubicación para finalizar servicio...\n\nPor favor espera mientras obtenemos tu ubicación GPS.');
-            
-            window.globalGeolocation.getQuickLocation(
-                (locationData) => {
-                    // Éxito: ubicación obtenida
-                    finalizationOrCancellationTime = locationData.timestamp;
-                    finalizationOrCancellationLocation = {
-                        latitude: locationData.latitude,
-                        longitude: locationData.longitude,
-                        accuracy: locationData.accuracy,
-                        timestamp: locationData.timestamp,
-                        altitude: locationData.altitude,
-                        heading: locationData.heading,
-                        speed: locationData.speed,
-                        altitudeAccuracy: locationData.altitudeAccuracy,
-                        browser: locationData.browser,
-                        deviceInfo: locationData.deviceInfo,
-                        context: locationData.context
-                    };
-                    // Proceder a guardar una vez obtenida la ubicación
-                    finalizeServiceSave(serviceCodeValue);
-                },
-                (error) => {
-                    // Error: mostrar mensaje específico
-                    showAlert(`❌ ${error.message}\n\n${error.details || ''}\n\n🔧 Soluciones:\n• Verifica que el GPS esté activado\n• Permite el acceso a la ubicación en tu navegador\n• Asegúrate de tener conexión a internet\n• Intenta en un área con mejor señal GPS`);
-                },
-                'finalizacion_servicio'
-            );
         } else {
             // Capturar serviceCode antes de guardar (por si acaso)
             const serviceCodeValue = document.getElementById('service-code') ? document.getElementById('service-code').value : '';
