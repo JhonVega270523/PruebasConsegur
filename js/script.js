@@ -2992,34 +2992,77 @@ function saveServiceData(serviceId, date, time, safeType, description, location,
             
             // Cerrar el modal de finalización antes de obtener la ubicación (importante para móvil)
             const finalizationModal = bootstrap.Modal.getInstance(document.getElementById('registerServiceModal'));
-            if (finalizationModal) {
-                finalizationModal.hide();
-                // Esperar a que el modal se cierre completamente antes de continuar (especialmente importante en móvil)
-                const modalElement = document.getElementById('registerServiceModal');
-                if (modalElement) {
-                    modalElement.addEventListener('hidden.bs.modal', function onModalHidden() {
-                        modalElement.removeEventListener('hidden.bs.modal', onModalHidden);
-                        // Esperar un delay más largo en móviles para asegurar que el modal se cerró completamente
-                        // y que no hay animaciones o transiciones pendientes
-                        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                        const delay = isMobile ? 1000 : 500; // 1 segundo en móviles, 500ms en escritorio
-                        setTimeout(() => {
-                            getLocationAndSave();
-                        }, delay);
-                    }, { once: true });
-                } else {
-                    // Si no hay elemento modal, proceder directamente después de un delay
-                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                    const delay = isMobile ? 1000 : 500;
-                    setTimeout(() => {
-                        getLocationAndSave();
-                    }, delay);
+            const modalElement = document.getElementById('registerServiceModal');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const delay = isMobile ? 1200 : 600; // 1.2 segundos en móviles, 600ms en escritorio
+            
+            // Flag para asegurar que getLocationAndSave solo se llame una vez
+            let locationRequestInitiated = false;
+            let fallbackTimeoutId = null;
+            let eventTimeoutId = null;
+            
+            const initiateLocationRequest = () => {
+                if (locationRequestInitiated) return;
+                locationRequestInitiated = true;
+                
+                // Limpiar todos los timeouts
+                if (fallbackTimeoutId) {
+                    clearTimeout(fallbackTimeoutId);
+                    fallbackTimeoutId = null;
                 }
-            } else {
-                // Si no hay modal que cerrar, proceder directamente después de un pequeño delay
-                setTimeout(() => {
+                if (eventTimeoutId) {
+                    clearTimeout(eventTimeoutId);
+                    eventTimeoutId = null;
+                }
+                
+                try {
                     getLocationAndSave();
-                }, 300);
+                } catch (error) {
+                    // Si hay un error, mostrar mensaje
+                    showAlert(`Error al obtener ubicación: ${error.message}\n\nPor favor intenta nuevamente.`);
+                    locationRequestInitiated = false; // Permitir reintentar
+                }
+            };
+            
+            // Cerrar el modal si existe
+            if (finalizationModal) {
+                try {
+                    finalizationModal.hide();
+                } catch (e) {
+                    // Si hay error al cerrar, continuar de todas formas
+                }
+            }
+            
+            // Método principal: Usar timeout fijo - SIEMPRE se ejecutará
+            // Esto garantiza que getLocationAndSave se llame sin depender de eventos del modal
+            fallbackTimeoutId = setTimeout(() => {
+                initiateLocationRequest();
+            }, delay);
+            
+            // Método secundario: Intentar usar el evento hidden.bs.modal como optimización
+            // Si el evento se dispara antes del timeout, cancelamos el timeout y usamos el evento
+            if (modalElement) {
+                const onModalHidden = function() {
+                    // Limpiar el timeout principal ya que el evento se disparó primero
+                    if (fallbackTimeoutId) {
+                        clearTimeout(fallbackTimeoutId);
+                        fallbackTimeoutId = null;
+                    }
+                    
+                    // Remover el listener
+                    modalElement.removeEventListener('hidden.bs.modal', onModalHidden);
+                    
+                    // Usar un delay más corto ya que el evento confirma que el modal se cerró
+                    eventTimeoutId = setTimeout(() => {
+                        initiateLocationRequest();
+                    }, delay - 200); // 200ms menos ya que el evento confirma el cierre
+                };
+                
+                try {
+                    modalElement.addEventListener('hidden.bs.modal', onModalHidden, { once: true });
+                } catch (e) {
+                    // Si no se puede agregar el listener, el timeout principal se encargará
+                }
             }
         } else {
             // Capturar serviceCode antes de guardar (por si acaso)
