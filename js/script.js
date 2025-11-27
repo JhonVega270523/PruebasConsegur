@@ -1065,12 +1065,20 @@ function completeProgress(type, totalProcessed, message, successes, warnings, er
     if (modalFooter) {
         modalFooter.style.display = 'flex';
         modalFooter.style.visibility = 'visible';
+        modalFooter.classList.remove('d-none');
     }
     
     // Actualizar contadores finales
     document.getElementById('progress-successes').textContent = successes;
     document.getElementById('progress-warnings').textContent = warnings;
     document.getElementById('progress-errors').textContent = errors;
+    
+    // En móvil, hacer scroll al botón "HECHO" cuando se complete
+    setTimeout(() => {
+        if (window.innerWidth <= 768) {
+            doneBtn.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+    }, 100);
 }
 
 function closeProgressModal() {
